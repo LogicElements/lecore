@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lecore"
+description = "Logic Elements core utilities"
+version = "0.1.16"
+authors = [
+  { name="Jan Bartovský", email="jan.bartovsky@logicelements.cz" },
+]
+readme = "README.md"
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+keywords = ["logicelements", "looger", "development"]
+
+
+requires-python = ">=3.7"
+dependencies = [
+    "pyserial",
+    "pymodbus",
+    "xmlrunner"]
+
+[tool.setuptools.packages.find]
+# scanning for namespace packages is true by default in pyproject.toml, so
+# you do NOT need to include the following line.
+namespaces = true
+where = ["src"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+# "lecore" = ["*.json"]
+"lecore.Devices.RtdEmul" = ["*.json"]
+"lecore.Devices.VmsRtd" = ["*.json"]
+"lecore.Devices.PhaseDet" = ["*.json"]
+
+[project.urls]
+"Homepage" = "https://github.com/LogicElements/lecore"
