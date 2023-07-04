@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lecore"
 description = "Logic Elements core utilities"
-version = "0.1.16"
+version = "0.1.17"
 authors = [
   { name="Jan Bartovský", email="jan.bartovsky@logicelements.cz" },
 ]
@@ -23,7 +23,7 @@ requires-python = ">=3.7"
 dependencies = [
     "pyserial",
     "pymodbus",
-    "xmlrunner"]
+    "unittest-xml-reporting"]
 
 [tool.setuptools.packages.find]
 # scanning for namespace packages is true by default in pyproject.toml, so
