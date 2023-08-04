@@ -13,22 +13,17 @@ except ImportError:
 pth = os.path.dirname(os.path.abspath(__file__))
 
 
-class TestRftbModbus(unittest.TestCase):
+class TestRftbLeBin(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """
         Create instance
         """
-        rftb = RFTB.Rftb()
-        rftb.open(comport='COM8')
+        rftb = RFTB.RftbLeBin()
+        ports = rftb.search_com()
+        rftb.open(comport=ports[0])
         cls.rftb = rftb
-
-    def setUp(self) -> None:
-        """
-        Insert just some delay between tests
-        """
-        sleep(0.1)
 
     def test001_rtd_read_reg(self):
         """
