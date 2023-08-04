@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lecore"
 description = "Logic Elements core utilities"
-version = "0.1.17"
+version = "0.1.18"
 authors = [
   { name="Jan Bartovský", email="jan.bartovsky@logicelements.cz" },
 ]
@@ -39,6 +39,7 @@ include-package-data = true
 "lecore.Devices.RtdEmul" = ["*.json"]
 "lecore.Devices.VmsRtd" = ["*.json"]
 "lecore.Devices.PhaseDet" = ["*.json"]
+"lecore.Devices.Rftb" = ["*.json"]
 
 [project.urls]
 "Homepage" = "https://github.com/LogicElements/lecore"
