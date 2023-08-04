@@ -104,7 +104,7 @@ class SerialCom:
     def get_list_ports(self, vid=1155, pid=22337, sn=""):
         """
         Get list of all COM ports with given VID and PID
-        :param sn:
+        :param sn: Fragment of serial number to find
         :param vid: Vendor ID of USB device
         :param pid: Product ID of USB device
         :return: List of COm ports
@@ -112,7 +112,7 @@ class SerialCom:
         self.ports = []
         ports = serial.tools.list_ports.comports()
         for comport in ports:
-            if vid == 0 or (comport.pid == pid and comport.vid == vid and (sn == "" or comport.serial_number in sn)):
+            if vid == 0 or (comport.pid == pid and comport.vid == vid and (sn == "" or sn in comport.serial_number)):
                 self.ports.append(comport.device)
         return self.ports
 

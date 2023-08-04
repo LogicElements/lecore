@@ -72,7 +72,7 @@ class VisualMbApp:
         This function blocks until window is closed and handles all user logic of GUI.
         :param timeout: Timeout of window appearance in seconds
         :param connectionless: If True, connection is open before read/write operation and closed just after
-        :return: None on exit
+        :return: True on exit
         """
         # Create and display window layout
         try:

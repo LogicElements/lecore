@@ -99,10 +99,10 @@ class ModbusDev:
         """
         Run visual modbus graphic application
         :param timeout: Timeout of automatic application shutdown in seconds
-        :return: None
+        :return: True on exit
         """
         self.close()
-        self._vis.handle(timeout)
+        return self._vis.handle(timeout)
 
     def upgrade_firmware(self, file, reboot_time=5):
         """
