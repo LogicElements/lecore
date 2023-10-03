@@ -227,7 +227,7 @@ class RegisterMap:
         :return: True on success, None on failure
         """
         resp = self.com.request_response(req, resp_len)
-        if len(resp) < 4:
+        if len(resp) <= 4:
             return None
         length = self.check_response(resp)
         if length is not None:
