@@ -101,7 +101,11 @@ class Looger:
         if self.header is None or self.body is None:
             return False
         # Send UDP data to dds
-        self.sock.sendto(bytes(self.header + self.body, "utf-8"), (self.host, self.port))
+        try:
+            self.sock.sendto(bytes(self.header + self.body, "utf-8"), (self.host, self.port))
+        except socket.gaierror as Ex:
+            print(f"Looger send error: {Ex}")
+            return False
         # Non-zero response timeout means we want to receive command
         if resp_timeout != 0:
             # Set timeout
