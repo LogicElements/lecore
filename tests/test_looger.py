@@ -4,7 +4,7 @@ from time import sleep
 from src.lecore.Looger import Looger
 
 
-class TestSimple(unittest.TestCase):
+class TestLooger(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):

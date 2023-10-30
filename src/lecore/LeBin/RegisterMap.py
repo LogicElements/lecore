@@ -76,6 +76,8 @@ class RegisterMap:
                 r["Min"] = 0
             if "Max" not in r:
                 r["Max"] = 0
+            if "Value" not in r:
+                r["Value"] = 0
 
     def read_by_nb(self, number):
         """ Read register indexed by ordinal number in the map

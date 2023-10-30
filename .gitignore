@@ -8,6 +8,7 @@ __pycache__/
 
 # Log directories
 [Ll]og/
+test-reports/
 
 # Distribution / packaging
 .Python

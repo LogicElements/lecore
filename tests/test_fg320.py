@@ -13,7 +13,7 @@ from lecore.LeBin import *
 pth = os.path.dirname(os.path.abspath(__file__))
 
 
-class TestSimple(unittest.TestCase):
+class TestFG320(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
