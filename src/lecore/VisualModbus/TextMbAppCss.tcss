@@ -1,0 +1,11 @@
+Input {
+    margin: 0 0;
+    outline: blank green;
+    padding: 0 0;
+    height: 1;
+    max-height: 1;
+}
+
+.column {
+    width: 1fr;
+}
