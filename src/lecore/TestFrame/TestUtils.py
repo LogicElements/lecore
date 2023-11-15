@@ -18,18 +18,24 @@ ch.setFormatter(formatter)
 # add the handlers to logger
 logger.addHandler(ch)
 
-# Create file handler
-log_filename = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') + '.txt'
-path_to_log_directory = './Log/'
 
-# Create directory if not exist
-if not os.path.exists(path_to_log_directory):
-    os.makedirs(path_to_log_directory)
+def log_to_file(directory='./Log/'):
+    """
+    Logger output to file
+    :param directory: Directory for log files
+    """
+    # File name
+    log_filename = datetime.datetime.now().strftime('%Y%m%d-%H%M%S') + '.txt'
 
-fh = logging.FileHandler(filename=os.path.join(path_to_log_directory, log_filename))
-fh.setLevel(logging.DEBUG)
-fh.setFormatter(formatter)
-logger.addHandler(fh)
+    # Create directory if not exist
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    # Create file handler and add to logger
+    fh = logging.FileHandler(filename=os.path.join(directory, log_filename))
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
 
 def is_testing_platform(switch='linux'):

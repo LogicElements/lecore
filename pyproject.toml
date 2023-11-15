@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lecore"
 description = "Logic Elements core utilities"
-version = "0.1.22"
+version = "0.1.23"
 authors = [
   { name="Jan Bartovský", email="jan.bartovsky@logicelements.cz" },
 ]
@@ -27,8 +27,9 @@ dependencies = [
 
 [project.optional-dependencies]
 extra = [
-  "PySimpleGUI",
-  "python-docx"
+    "PySimpleGUI",
+    "python-docx",
+#        "textual"
 ]
 
 [tool.setuptools.packages.find]
