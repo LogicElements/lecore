@@ -1,11 +1,22 @@
 Input {
     margin: 0 0;
-    outline: blank green;
-    padding: 0 0;
+    padding: 0 1;
     height: 1;
     max-height: 1;
 }
 
-.column {
+DataTable {
+    height: 1fr
+}
+
+Horizontal {
+    height: auto
+}
+
+.descr_value {
     width: 1fr;
+}
+
+.description {
+    width: 3fr;
 }
