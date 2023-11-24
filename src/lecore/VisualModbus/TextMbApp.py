@@ -3,12 +3,14 @@ from textual import on
 from textual.app import App, ComposeResult
 from textual.widgets import Button, Header, Static, Input, Footer
 from textual.containers import Horizontal, Vertical
-# from textual import log
+from textual.binding import Binding
+from textual.screen import Screen
 from textual.message import Message
 from textual.widgets import DataTable
 
 from MbClient import MbClient
 from RegMap import RegMap
+from VmSettings import *
 
 
 class MyDataTable(DataTable):
@@ -40,24 +42,43 @@ class MyInput(Input):
         await super()._on_key(event)
 
 
+class Settings(Screen):
+    BINDINGS = [("escape", "app.pop_screen", "Pop screen")]
+
+    def compose(self) -> ComposeResult:
+        for p in s.keys():
+            with Horizontal(classes='column'):
+                yield Static(p, id=f'set_{p}', classes='description')
+                yield MyInput(value=str(s[p]), id=f"val_{p}", classes='descr_value')
+
+
 class LogApp(App):
     CSS_PATH = "TextMbAppCss.tcss"
     TITLE = "Modbus state"
     SUB_TITLE = "Disconnected"
+    SCREENS = {"settings": Settings()}
 
     BINDINGS = [
-        ("c", "ftr_connect", "Connect"),
-        ("d", "ftr_disconnect", "Disconnect"),
-        ("a", "ftr_read_all", "Read All"),
-        ("r", "ftr_read", "Read"),
-        ("q", "ftr_quit", "Quit"),
+        Binding("c", "ftr_connect", "Connect"),
+        Binding("d", "ftr_disconnect", "Disconnect"),
+        Binding("a", "ftr_read_all", "Read All"),
+        Binding("r", "ftr_read", "Read"),
+        Binding("s", "push_screen('settings')", "Settings"),
+        Binding("q", "ftr_quit", "Quit"),
     ]
 
-    def __init__(self):
+    def __init__(self, visual='VisualSettings.json', upgrade='UpgradeSettings.json', com='ComSettings.json',
+                 slave=None, reg_map=None, mb=None):
         super().__init__()
-        self.mb = MbClient()
-        self.reg = RegMap(self.mb, slave=32)
-        self.reg.load('../../../tests/RtdEmul_Modbus.json')
+        if isinstance(mb, MbClient):
+            self.mb = mb
+        else:
+            self.mb = MbClient()
+        self._com_settings = com
+        read_settings([com, visual, upgrade])
+        self.slave = s['slave_address'] if slave is None else slave
+        self.reg = RegMap(self.mb, slave=self.slave)
+        self.reg.load(s['reg_map'] if reg_map is None else reg_map)
         self._reg_idx = 0
         self._table = None
 
@@ -127,12 +148,12 @@ class LogApp(App):
         self.exit()
 
     def action_ftr_connect(self):
-        self.mb.open_direct('COM17')
+        self.mb.open(self._com_settings)
         self.sub_title = "Connected"
         self.log("Connected to ")
 
     def action_ftr_disconnect(self):
-        self.mb.open_direct('COM17')
+        self.mb.close()
         self.sub_title = "Disconnected"
         self.log("Disconnected from ")
 
@@ -159,5 +180,10 @@ class LogApp(App):
             self._update_bottom(reg['Name'])
 
 
+
+
 if __name__ == "__main__":
-    LogApp().run()
+    LogApp(reg_map='../../../tests/RtdEmul_Modbus.json',
+           upgrade='../../../tests/UpgradeSettings.json',
+           com='../../../tests/ComSettings.json',
+           visual='../../../tests/VisualSettings.json').run()
