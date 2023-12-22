@@ -12,6 +12,7 @@ from textual.widgets import DataTable
 
 from MbClient import MbClient
 from RegMap import RegMap
+from MbUpgrade import MbUpgrade
 from VmSettings import *
 
 
@@ -104,12 +105,17 @@ class Update(ModalScreen):
     def __init__(self):
         super().__init__()
         self.path = pathlib.Path().resolve()
+        self.upd = None
 
     async def on_click(self, event):
         if time.time() - self.t_click < 0.3:
             self.log("Tree double click")
         self.t_click = time.time()
         await super()._on_click(event)
+
+    def set_update(self, update):
+        self.upd = update
+        self.log(f"Update passed {update}")
 
     # def on_load(self):
 
@@ -145,7 +151,7 @@ class LogApp(App):
     CSS_PATH = "TextMbAppCss.tcss"
     TITLE = "Modbus state"
     # SUB_TITLE = "Disconnected"
-    SCREENS = {"settings": Settings(), "update":Update()}
+    SCREENS = {"settings": Settings(), "update": Update()}
 
     BINDINGS = [
         Binding("a", "ftr_read_all", "Read All"),
@@ -171,6 +177,7 @@ class LogApp(App):
         self.reg.load(s['reg_map'] if reg_map is None else reg_map)
         self._reg_idx = 0
         self._table = None
+        self._update = MbUpgrade(upgrade, self.mb, self.slave)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -193,6 +200,7 @@ class LogApp(App):
         for reg in self.reg.input + self.reg.hold:
             self._table.add_row(f"{reg['Address']}", reg['Type'], reg['Name'], str(reg['Value']),
                                 self.reg.val_to_hex(reg))
+        self.SCREENS['update'].set_update(self._update)
 
     def on_data_table_row_highlighted(self, message):
         self._reg_idx = message.cursor_row
@@ -211,6 +219,7 @@ class LogApp(App):
         self.update_sub_title()
 
     def update_sub_title(self):
+        # noinspection PyTypeChecker
         self.sub_title = f"Using {self.mb.comport}, {self.mb.s['baud_rate']} baud/s, parity {self.mb.s['parity']}"
 
     @on(MyInput.Submitted, '#val_dec')
