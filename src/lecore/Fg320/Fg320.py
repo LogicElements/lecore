@@ -1,3 +1,4 @@
+import serial
 from lecore.LeBin import SerialCom
 
 
@@ -8,11 +9,21 @@ class Fg320:
     SUP_FUNCTION = ["OF", "SI", "SQ", "TR", "SA", "US"]
     SUP_MODE = ["normal", "speed", "current", "current AC"]
 
-    def __init__(self, com):
+    @staticmethod
+    def get_com_ports():
+        return SerialCom().get_list_ports(vid=1155, pid=22336, sn="")
+
+    def __init__(self, com=None):
         """
         Initialize FG-320 device class.
-        :param com: COM port. Either string name, such as 'COM1' or SerialCom object
+        :param com: COM port. Either string name, such as 'COM1' or SerialCom object. If None we try to find com port
         """
+        if com is None:
+            coms = self.get_com_ports()
+            if len(coms) != 1:
+                raise serial.SerialException(f"Could not find just one FG320 port. {coms}")
+            com = coms[0]
+
         if isinstance(com, str):
             com_port = SerialCom()
             com_port.open_com(com, 1)
@@ -110,12 +121,16 @@ class Fg320:
         :return: None
         """
         if self.mode == "normal":
+            if self.function not in self.SUP_FUNCTION:
+                raise ValueError(f"Function {self.function} must be one of {self.SUP_FUNCTION}")
             self.cmd = f"{self.function} {int(self.frequency * 10)} {int(self.amplitude * 10000)} " \
                        f"{int(self.dc * 100)} {int(self.angle)} {int(self.kp_length)} {int(self.order)} " \
                        f"{int(self.kp_high * 10)} {int(self.kp_low * 10)}\r\n"
         if self.mode == "current":
             self.cmd = f"IO 0 0 {int(self.dc * 100)}\r\n"
         if self.mode == "current AC":
+            if self.function not in self.SUP_FUNCTION:
+                raise ValueError(f"Function {self.function} must be one of {self.SUP_FUNCTION}")
             self.cmd = f"IO {int(self.frequency * 10)} {int(self.amplitude * 1000)} {int(self.dc * 100)} " \
                        f"{int(self.angle)} {int(self.kp_length)} {int(self.order)} " \
                        f"{int(self.kp_high * 10)} {int(self.kp_low * 10)} " \
@@ -123,17 +138,17 @@ class Fg320:
         if self.mode == "speed":
             self.cmd = f"SD {int(self.frequency * 10)}\r\n"
 
-        resp = self.com.request_read_line(bytearray(self.cmd, 'utf-8'), 2)
-        # print(resp)
+        self.com.request_read_line(bytearray(self.cmd, 'utf-8'), 2)
 
-    def ramp_time(self, time=0):
+    def ramp(self, time=0, shape=0):
         """
         Set ramp time (time for change from last signal settings to the new one). Use 0 to disable ramp.
         This parameter applies to all modes.
         :param time: Ramp time in seconds (resolution is ms)
+        :param shape: 0 - linear, 1 - exponential
         :return: None
         """
-        self.cmd = f"SR {round(time*1000)}\r\n"
+        self.cmd = f"SR {round(time*1000)} {shape}\r\n"
         self.com.request_read_line(bytearray(self.cmd, 'utf-8'), 2)
 
     def limit_number_period(self, periods=0):
