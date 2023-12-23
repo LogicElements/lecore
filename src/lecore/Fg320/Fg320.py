@@ -222,10 +222,15 @@ class Fg320:
         length = len(data)
         # Write data into device
         self.cmd = f"FW {length}\r\n"
+        # Store COM port timeout for future
+        timeout = self.com.port.timeout
         self.com.port.timeout = 5
+        # Send command and wait for response
         self.com.request_read_line(bytearray(self.cmd, 'utf-8'), 2)
+        # Send entire firmware and wait for response
         self.com.request_read_line(data, 2)
-        self.com.port.timeout = self.com.settings["timeout"]
+        # Restore COM port timeout
+        self.com.port.timeout = timeout
 
 
 
