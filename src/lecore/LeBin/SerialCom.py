@@ -6,6 +6,7 @@ import serial.tools.list_ports
 
 class SerialCom:
     """Serial communication class"""
+
     def __init__(self):
         self.port = None
         self.settings = None
@@ -101,7 +102,7 @@ class SerialCom:
         """
         return -1
 
-    def get_list_ports(self, vid=1155, pid=22337, sn=""):
+    def get_list_ports(self, vid=1155, pid=22337, sn=None):
         """
         Get list of all COM ports with given VID and PID
         :param sn: Fragment of serial number to find
@@ -112,7 +113,7 @@ class SerialCom:
         self.ports = []
         ports = serial.tools.list_ports.comports()
         for comport in ports:
-            if vid == 0 or (comport.pid == pid and comport.vid == vid and (sn == "" or sn in comport.serial_number)):
+            if vid == 0 or (comport.pid == pid and comport.vid == vid and (sn is None or sn in comport.serial_number)):
                 self.ports.append(comport.device)
         return self.ports
 

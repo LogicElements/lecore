@@ -25,7 +25,7 @@ class TestFG320(unittest.TestCase):
         com.open(com_file)
         fg = FG.Fg320(com)
 
-        fg2 = FG.Fg320('COM6')
+        fg2 = FG.Fg320()
 
         cls.fg = fg2
 
@@ -46,7 +46,7 @@ class TestFG320(unittest.TestCase):
 
         self.fg.identify()
         print(f"Calibration: {self.fg.read_calibration()}")
-        self.fg.ramp_time(delay)
+        self.fg.ramp(delay)
         self.fg.limit_number_period(0)
 
         # Initial set of FG320
