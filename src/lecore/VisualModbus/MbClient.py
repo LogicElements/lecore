@@ -8,6 +8,13 @@ try:
 except ModuleNotFoundError:
     from pymodbus.client import ModbusSerialClient as ModbusClient
 
+try:
+    from pymodbus.logging import Log
+except ModuleNotFoundError:
+    class Log:
+        @classmethod
+        def setLevel(self, level):
+            pass
 
 class MbClient:
     """
@@ -55,7 +62,9 @@ class MbClient:
         if self._connectionless:
             ret = False
         else:
+            Log.setLevel('CRITICAL')
             ret = self.client.connect()
+            Log.setLevel('ERROR')
         if ret is True:
             self.log.warning('Port {0} opened at baud rate {1}, parity {2}, stop bits {3}'.format(
                 self.s['comport'], self.s['baud_rate'], self.s['parity'], self.s['stop_bits']))
@@ -117,9 +126,9 @@ class MbClient:
         :return: None on read error
         """
         try:
-            self.rr = self.client.read_input_registers(request['Address'], request['Count'], unit=request['Slave'])
-        except TypeError:
             self.rr = self.client.read_input_registers(request['Address'], request['Count'], request['Slave'])
+        except TypeError:
+            self.rr = self.client.read_input_registers(request['Address'], request['Count'], unit=request['Slave'])
         if self.rr.isError():
             self.log.error(str(self.rr) + str(request))
             return None
@@ -136,9 +145,9 @@ class MbClient:
         :return: None on read error
         """
         try:
-            self.rr = self.client.read_holding_registers(request['Address'], request['Count'], unit=request['Slave'])
-        except TypeError:
             self.rr = self.client.read_holding_registers(request['Address'], request['Count'], request['Slave'])
+        except TypeError:
+            self.rr = self.client.read_holding_registers(request['Address'], request['Count'], unit=request['Slave'])
         if self.rr.isError():
             self.log.error(str(self.rr) + str(request))
             return None
@@ -166,9 +175,9 @@ class MbClient:
                 if self.open() is False:
                     return None
         try:
-            self.rr = self.client.write_registers(request['Address'], request['Values'], unit=request['Slave'])
-        except TypeError:
             self.rr = self.client.write_registers(request['Address'], request['Values'], request['Slave'])
+        except TypeError:
+            self.rr = self.client.write_registers(request['Address'], request['Values'], unit=request['Slave'])
         if self._connectionless:
             self.client.close()
         if isinstance(self.rr, bytes):
