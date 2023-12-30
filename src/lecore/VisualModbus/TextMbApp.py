@@ -2,6 +2,7 @@ import time
 import pathlib
 
 from textual import on
+from textual import work
 from textual.app import App, ComposeResult
 from textual.widgets import Button, Header, Static, Input, Footer, DirectoryTree, ProgressBar
 from textual.containers import Horizontal, VerticalScroll
@@ -106,6 +107,8 @@ class Update(ModalScreen):
         super().__init__()
         self.path = pathlib.Path().resolve()
         self.upd = None
+        self._pb = None
+        self._file = None
 
     async def on_click(self, event):
         if time.time() - self.t_click < 0.3:
@@ -113,44 +116,57 @@ class Update(ModalScreen):
         self.t_click = time.time()
         await super()._on_click(event)
 
+    async def on_key(self, event):
+        if event.key == 'backspace':
+            tree = self.query_one(DirectoryTree)
+            tree.path = tree.path.parent
+        if event.key == 'q':
+            self.app.pop_screen()
+        await super()._on_key(event)
+
     def set_update(self, update):
         self.upd = update
         self.log(f"Update passed {update}")
 
-    # def on_load(self):
-
     def on_mount(self):
         self.path = pathlib.Path().resolve()
         self.query_one(DirectoryTree).path = self.path
+        self._pb = self.query_one(ProgressBar)
 
     def compose(self) -> ComposeResult:
         yield DirectoryTree(self.path, id='update_tree')
         with Horizontal():
-            yield Button("Parent", id='parent')
             yield Button("Update", id='update')
             yield Static("No file", id='upd_file')
         yield ProgressBar()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == 'parent':
-            tree = self.query_one(DirectoryTree)
-            tree.path = tree.path.parent
-        else:
-            pb = self.query_one(ProgressBar)
-            pb.update(total=100)
+        self.update_firmware()
+
+    @work(thread=True, exclusive=True)
+    def update_firmware(self):
+        self.upd.load_file(self._file)
+        self._pb.update(total=self.upd.size, progress=0)
+        self.upd.progress = 0
+        self.upd.run_upgrade(progress_clb=self.progress_callback)
+
+    def progress_callback(self, progress, _):
+        self.app.call_from_thread(self._pb.update, progress=progress)
 
     def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected):
         st = self.query_one('#upd_file')
         st.update(f"Selected file: {event.path}")
+        self._file = event.path
 
     def on_directory_tree_directory_selected(self, event: DirectoryTree.DirectorySelected):
         self.log(event.path)
+        tree = self.query_one(DirectoryTree)
+        tree.path = event.path
 
 
-class LogApp(App):
+class TextMbApp(App):
     CSS_PATH = "TextMbAppCss.tcss"
     TITLE = "Modbus state"
-    # SUB_TITLE = "Disconnected"
     SCREENS = {"settings": Settings(), "update": Update()}
 
     BINDINGS = [
@@ -188,9 +204,6 @@ class LogApp(App):
             yield MyInput(value=f"HEX", id='val_hex', classes='descr_value')
         yield Footer()
 
-    def on_load(self):
-        pass
-
     def on_mount(self):
         self.update_sub_title()
         self._table = self.query_one(DataTable)
@@ -223,12 +236,12 @@ class LogApp(App):
         self.sub_title = f"Using {self.mb.comport}, {self.mb.s['baud_rate']} baud/s, parity {self.mb.s['parity']}"
 
     @on(MyInput.Submitted, '#val_dec')
-    def on_dec_submitted(self, message):
+    def on_dec_submitted(self):
         in_dec = self.query_one("#val_dec")
         self._write_value(in_dec.value)
 
     @on(MyInput.Submitted, '#val_hex')
-    def on_hex_submitted(self, message):
+    def on_hex_submitted(self):
         in_hex = self.query_one("#val_hex")
         value = str(int(in_hex.value.replace("0x", ""), 16))
         self._write_value(value)
@@ -274,7 +287,7 @@ class LogApp(App):
 
 
 if __name__ == "__main__":
-    LogApp(reg_map='../../../tests/RtdEmul_Modbus.json',
-           upgrade='../../../tests/UpgradeSettings.json',
-           com='../../../tests/ComSettings.json',
-           visual='../../../tests/VisualSettings.json').run()
+    TextMbApp(reg_map='../../../tests/RtdEmul_Modbus.json',
+              upgrade='../../../tests/UpgradeSettings.json',
+              com='../../../tests/ComSettings.json',
+              visual='../../../tests/VisualSettings.json').run()
