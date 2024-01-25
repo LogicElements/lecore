@@ -4,6 +4,15 @@ from ..VisualModbus.MbClient import MbClient
 from ..VisualModbus.RegMap import RegMap
 from ..VisualModbus.MbUpgrade import MbUpgrade
 from ..VisualModbus.VisualMbApp import VisualMbApp
+try:
+    from ..VisualModbus.TextMbApp import TextMbApp
+except ImportError:
+    class TextMbApp:
+        def __init__(self, *kargs):
+            pass
+
+        def run(self):
+            raise ImportError("Textual packages not present")
 
 
 class ModbusDev:
@@ -21,6 +30,7 @@ class ModbusDev:
         self._path = ""
         self._upg = None
         self._vis = None
+        self.text = None
         self._def_com = "ComSettings.json"
         self._def_visual = "VisualSettings.json"
         self._def_upg = "UpgradeSettings.json"
@@ -104,6 +114,12 @@ class ModbusDev:
         self.close()
         return self._vis.handle(timeout)
 
+    def textual(self):
+        """
+        Run textual user interface application
+        """
+        self._text.run()
+
     def upgrade_firmware(self, file, reboot_time=5):
         """
         Upgrade firmware in the modbus slave device. This function also checks the version of firmware after upgrade.
@@ -144,6 +160,7 @@ class ModbusDev:
         self.regs.slave = self._vis.slave
         self.slave = self._vis.slave
         self._upg.slave = self._vis.slave
+        self._text = TextMbApp(self._vis_file, self._upg_file, self._com_file, self.slave, self._reg_file, self.mb)
 
     def _upgrade(self, settings):
         """

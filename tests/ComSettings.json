@@ -1,5 +1,5 @@
 ﻿{
-    "comport": "COM17",
+    "comport": "COM35",
     "baud_rate": 19200,
     "stop_bits": 1,
     "parity": "E",

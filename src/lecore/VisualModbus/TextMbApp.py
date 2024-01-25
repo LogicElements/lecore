@@ -11,10 +11,10 @@ from textual.screen import ModalScreen
 from textual.message import Message
 from textual.widgets import DataTable
 
-from MbClient import MbClient
-from RegMap import RegMap
-from MbUpgrade import MbUpgrade
-from VmSettings import *
+from .MbClient import MbClient
+from .RegMap import RegMap
+from .MbUpgrade import MbUpgrade
+from .VmSettings import *
 
 
 class MyDataTable(DataTable):
@@ -205,6 +205,8 @@ class TextMbApp(App):
         yield Footer()
 
     def on_mount(self):
+        if s['comport'] != self.mb.comport:
+            s['comport'] = self.mb.comport
         self.update_sub_title()
         self._table = self.query_one(DataTable)
         self._table.cursor_type = "row"
@@ -284,10 +286,3 @@ class TextMbApp(App):
         self._table.update_cell_at((idx, 4), self.reg.val_to_hex(reg), update_width=True)
         if idx == self._reg_idx:
             self._update_bottom(reg['Name'])
-
-
-if __name__ == "__main__":
-    TextMbApp(reg_map='../../../tests/RtdEmul_Modbus.json',
-              upgrade='../../../tests/UpgradeSettings.json',
-              com='../../../tests/ComSettings.json',
-              visual='../../../tests/VisualSettings.json').run()

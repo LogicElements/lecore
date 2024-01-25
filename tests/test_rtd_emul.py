@@ -3,13 +3,13 @@ import os
 from time import sleep
 import random
 
-try:
-    import lecore.Devices.RtdEmul as RE
-except ImportError:
-    import src.lecore.Devices.RtdEmul as RE
-import random
+# try:
+#     import lecore.Devices.RtdEmul as RE
+# except ImportError:
+#     import src.lecore.Devices.RtdEmul as RE
+# import random
 
-# import src.lecore.Devices.RtdEmul as RE
+import src.lecore.Devices.RtdEmul as RE
 
 pth = os.path.dirname(os.path.abspath(__file__))
 
@@ -22,7 +22,7 @@ class TestSimple(unittest.TestCase):
         Create instance
         """
         rtd = RE.RtdEmul()
-        rtd.open(comport='COM8', slave=33)
+        rtd.open(comport='COM34', slave=33)
         cls.rtd = rtd
 
     def setUp(self) -> None:
@@ -61,6 +61,9 @@ class TestSimple(unittest.TestCase):
         """
         ret = self.rtd.upgrade_firmware(pth + '/binary/RtdEmulator-app-20201113-5.bin')
         self.assertTrue(ret, msg=f"Update failed")
+
+    def test005_rtd_textual(self):
+        self.rtd.textual()
 
 
 if __name__ == '__main__':
