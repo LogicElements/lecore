@@ -1,5 +1,5 @@
 import os
-import src.lecore.Devices.RtdEmul as RE
+import lecore.Devices.RtdEmul as RE
 
 pth = os.path.dirname(os.path.abspath(__file__))
 
