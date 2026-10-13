@@ -1,0 +1,10 @@
+# Normalize text files in the repository (LF in index), checkout follows platform settings
+* text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+
+# Binary files
+*.bin binary
+*.whl binary
+*.gz binary

@@ -3,13 +3,10 @@ import os
 from time import sleep
 import random
 
-# try:
-#     import lecore.Devices.RtdEmul as RE
-# except ImportError:
-#     import src.lecore.Devices.RtdEmul as RE
-# import random
-
-import src.lecore.Devices.RtdEmul as RE
+try:
+    import lecore.Devices.RtdEmul as RE
+except ImportError:
+    import src.lecore.Devices.RtdEmul as RE
 
 pth = os.path.dirname(os.path.abspath(__file__))
 
@@ -53,7 +50,7 @@ class TestSimple(unittest.TestCase):
         Test running visual application
         :return:
         """
-        self.rtd.visual(5)
+        self.rtd.visual(0)
 
     def test004_rtd_update(self):
         """

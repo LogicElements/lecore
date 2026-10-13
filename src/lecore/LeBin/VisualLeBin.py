@@ -1,9 +1,12 @@
 import time
 from .RegisterMap import *
 try:
-    import PySimpleGUI as SG
+    import FreeSimpleGUI as SG
 except ImportError:
-    import datetime as SG
+    try:
+        import PySimpleGUI as SG
+    except ImportError:
+        import datetime as SG
 
 
 class VisualLeBin:
@@ -60,7 +63,7 @@ class VisualLeBin:
             self.window = SG.Window('LeBin visual application. Version: 1.1', layout, resizable=True, finalize=True)
             self.update()
         except AttributeError:
-            raise ImportError("PySimpleGUI is probably missing")
+            raise ImportError("FreeSimpleGUI is probably missing")
 
     def update(self):
         """

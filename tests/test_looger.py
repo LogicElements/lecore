@@ -1,7 +1,10 @@
 import unittest
 from time import sleep
 
-from src.lecore.Looger import Looger
+try:
+    from lecore.Looger import Looger
+except ImportError:
+    from src.lecore.Looger import Looger
 
 
 class TestLooger(unittest.TestCase):

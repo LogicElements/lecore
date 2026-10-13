@@ -1,9 +1,12 @@
 import json
 import io
 try:
-    import PySimpleGUI as SG
+    import FreeSimpleGUI as SG
 except ImportError:
-    import datetime as SG
+    try:
+        import PySimpleGUI as SG
+    except ImportError:
+        import datetime as SG
 
 s = {}
 _sub_col = []

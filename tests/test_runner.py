@@ -3,13 +3,19 @@ import os
 from time import sleep
 
 try:
-    import lecore.TestFram.Runner as TR
+    import lecore.TestFrame.Runner as TR
 except ImportError:
     import src.lecore.TestFrame.Runner as TR
 
 # Import miscellaneous test cases
-from test_looger import *
-from test_fg320 import *
+try:
+    # Imported as part of the tests package (pytest, unittest discovery)
+    from .test_looger import *
+    from .test_fg320 import *
+except ImportError:
+    # Run directly as a script, sibling modules are on sys.path
+    from test_looger import *
+    from test_fg320 import *
 
 
 if __name__ == '__main__':

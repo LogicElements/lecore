@@ -1,3 +1,4 @@
+import inspect
 import io
 import json
 import logging
@@ -9,12 +10,44 @@ except ModuleNotFoundError:
     from pymodbus.client import ModbusSerialClient as ModbusClient
 
 try:
+    from pymodbus.framer import FramerType
+except ImportError:
+    FramerType = None
+
+try:
     from pymodbus.logging import Log
 except ModuleNotFoundError:
     class Log:
         @classmethod
         def setLevel(self, level):
             pass
+
+def _device_kwarg():
+    """
+    Name of the keyword argument selecting the slave device in pymodbus requests (changes between versions:
+    unit -> slave -> device_id).
+    """
+    try:
+        params = inspect.signature(ModbusClient.read_holding_registers).parameters
+    except (TypeError, ValueError):
+        return 'unit'
+    for name in ('device_id', 'slave'):
+        if name in params:
+            return name
+    return 'unit'
+
+
+def _client_kwargs():
+    """
+    Framer selection argument of the client constructor (changes between versions: method='rtu' -> framer=RTU).
+    """
+    if FramerType is not None and 'framer' in inspect.signature(ModbusClient.__init__).parameters:
+        return {'framer': FramerType.RTU}
+    return {'method': 'rtu'}
+
+
+_DEVICE_KW = _device_kwarg()
+
 
 class MbClient:
     """
@@ -46,17 +79,24 @@ class MbClient:
                 self.s = json.load(f)
         self.comport = self.s['comport']
         # Open port
-        self.client = ModbusClient(method='rtu', port=self.s['comport'], timeout=self.s['timeout'],
+        self.client = ModbusClient(**_client_kwargs(), port=self.s['comport'], timeout=self.s['timeout'],
                                    baudrate=self.s['baud_rate'], parity=self.s['parity'],
                                    stopbits=self.s['stop_bits'])
         # Set additional timeout parameters
-        self.client.inter_char_timeout *= self.s['inter_char_timeout']  # default 0.000859375
+        try:
+            self.client.inter_char_timeout *= self.s['inter_char_timeout']  # default 0.000859375
+        except AttributeError:
+            self.client.inter_byte_timeout *= self.s['inter_char_timeout']
         if 'minimal_inter_char_timeout' in self.s:
             min_inter = self.s['minimal_inter_char_timeout']
         else:
             min_inter = 0.05
-        self.client.inter_char_timeout = max(self.client.inter_char_timeout, min_inter)
-        self.client.silent_interval *= self.s['silent_interval']
+        try:
+            self.client.inter_char_timeout = max(self.client.inter_char_timeout, min_inter)
+        except AttributeError:
+            self.client.inter_byte_timeout = max(self.client.inter_byte_timeout, min_inter)
+        if hasattr(self.client, 'silent_interval'):
+            self.client.silent_interval *= self.s['silent_interval']
         # Connect to port
         self._connectionless = connectionless
         if self._connectionless:
@@ -125,10 +165,7 @@ class MbClient:
         :return: Array of read register values on success
         :return: None on read error
         """
-        try:
-            self.rr = self.client.read_input_registers(request['Address'], request['Count'], request['Slave'])
-        except TypeError:
-            self.rr = self.client.read_input_registers(request['Address'], request['Count'], unit=request['Slave'])
+        self.rr = self.client.read_input_registers(request['Address'], count=request['Count'], **{_DEVICE_KW: request['Slave']})
         if self.rr.isError():
             self.log.error(str(self.rr) + str(request))
             return None
@@ -144,10 +181,7 @@ class MbClient:
         :return: Array of read register values on success
         :return: None on read error
         """
-        try:
-            self.rr = self.client.read_holding_registers(request['Address'], request['Count'], request['Slave'])
-        except TypeError:
-            self.rr = self.client.read_holding_registers(request['Address'], request['Count'], unit=request['Slave'])
+        self.rr = self.client.read_holding_registers(request['Address'], count=request['Count'], **{_DEVICE_KW: request['Slave']})
         if self.rr.isError():
             self.log.error(str(self.rr) + str(request))
             return None
@@ -174,10 +208,7 @@ class MbClient:
                     return None
                 if self.open() is False:
                     return None
-        try:
-            self.rr = self.client.write_registers(request['Address'], request['Values'], request['Slave'])
-        except TypeError:
-            self.rr = self.client.write_registers(request['Address'], request['Values'], unit=request['Slave'])
+        self.rr = self.client.write_registers(request['Address'], request['Values'], **{_DEVICE_KW: request['Slave']})
         if self._connectionless:
             self.client.close()
         if isinstance(self.rr, bytes):
@@ -187,5 +218,5 @@ class MbClient:
             return None
         else:
             self.log.info('Write holding registers to slave {} at address {}, count {}.'
-                          .format(request['Slave'], request['Address'], request['Count']))
+                          .format(request['Slave'], request['Address'], len(request['Values'])))
             return 0

@@ -1,9 +1,12 @@
 import time
 # import build-in modules
 try:
-    import PySimpleGUI as SG
+    import FreeSimpleGUI as SG
 except ImportError:
-    import datetime as SG    
+    try:
+        import PySimpleGUI as SG
+    except ImportError:
+        import datetime as SG
 # import own modules
 from .AppLogging import *
 from .RegMap import RegMap
@@ -78,7 +81,7 @@ class VisualMbApp:
         try:
             self._finalize()
         except AttributeError:
-            raise ImportError("PySimpleGUI is probably missing")
+            raise ImportError("FreeSimpleGUI is probably missing")
         end_time = time.time()
         if timeout is not None:
             end_time += timeout

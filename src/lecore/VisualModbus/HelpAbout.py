@@ -1,8 +1,11 @@
 # import build-in modules
 try:
-    import PySimpleGUI as SG
+    import FreeSimpleGUI as SG
 except ImportError:
-    import datetime as SG
+    try:
+        import PySimpleGUI as SG
+    except ImportError:
+        import datetime as SG
 
 VERSION_MAJOR = 0
 
