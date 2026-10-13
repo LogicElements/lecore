@@ -141,7 +141,8 @@ class SerialCom:
         except (serial.SerialException, AttributeError):
             if self.comport is not None:
                 self.close()
-                self._open_comport()
+                if not self._open_comport():
+                    raise serial.SerialException(f"Cannot open COM port {self.comport}")
                 self.port.write(msg)
             else:
                 print("No com port opened yet")

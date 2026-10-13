@@ -38,9 +38,12 @@ sn = rtd.read(RE.Reg.FACT_SERIAL_NUMBER)
 rtd.write(RE.Reg.EMUL_TEMPERATURE_1, 30.5)
 ```
 
+New device class (in the directory with the register map): `python -m lecore new-device MyDevice`, quick guide: `python -m lecore guide`.
+
 ## Documentation
 
 - [Devices](doc/devices.md) - RTD Emulator, VMS-1502 RTD Meter, Phase Detector, FG-320
+- [Creating a new device](doc/new-device.md)
 - [Looger](doc/looger.md)
 - [User interfaces](doc/user-interfaces.md) - graphical and terminal register browser
 - [Build and release](doc/build.md)

@@ -80,6 +80,11 @@ pe.write(PE.Reg.PH_CLEAR_ALL, 1)
 ```
 
 
+## Custom devices
+
+See [Creating a new device](new-device.md).
+
+
 ## Third-party devices
 
 ### FG-320
