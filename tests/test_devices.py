@@ -4,6 +4,7 @@ import os
 import shutil
 import tempfile
 import unittest
+import unittest.mock
 import warnings
 
 try:
@@ -166,6 +167,15 @@ class TestDevices(unittest.TestCase):
             dev.write(RFTB.Reg.SYS_UPTIME, 1)
         with self.assertRaises(ValueError):
             D.UsbId(vid=0x10000)
+        dev.close()
+
+    def test010_lebin_send_file_status(self):
+        dev = RFTB.RftbLeBin()
+        path = self._write('file.bin', '\0' * 16)
+        for run_ret in (True, False):
+            dev._upg = unittest.mock.Mock(**{'run.return_value': run_ret})
+            self.assertIs(dev.send_file(path), run_ret)
+            dev._upg.load_file.assert_called_once_with(path)
         dev.close()
 
 

@@ -27,6 +27,11 @@ When the directory contains both Modbus and LeBin register map with common `*Reg
 The same is available as `lecore.new_device()`, `lecore.generate_regs()` and `lecore.guide()`. The guide is shipped
 with the package (`src/lecore/QUICKSTART.md`), so it can be given to an AI assistant in projects using `lecore`.
 
+`new-device` also creates a missing `CLAUDE.md` in the package: a short description of the device classes
+(Modbus and/or LeBin), their `read()`/`write()` API and the command line (`--read`, `--list`). Claude Code loads it
+when working with files of the package; from a project root it can be included by `@mydevice/CLAUDE.md` in the root
+`CLAUDE.md`. An existing `CLAUDE.md` is never changed (delete it to regenerate, e.g., after adding a protocol).
+
 ## Modbus device
 
 Put the configuration files next to the module with the device class:

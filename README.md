@@ -42,11 +42,12 @@ New device class (in the directory with the register map): `python -m lecore new
 
 ## Documentation
 
-- [Devices](doc/devices.md) - RTD Emulator, VMS-1502 RTD Meter, Phase Detector, FG-320
 - [Creating a new device](doc/new-device.md)
-- [Looger](doc/looger.md)
+- [Device API](doc/api.md) - Modbus and LeBin device: read, write, firmware upgrade
 - [User interfaces](doc/user-interfaces.md) - graphical and terminal register browser
+- [Devices](doc/devices.md) - RTD Emulator, VMS-1502 RTD Meter, Phase Detector, FG-320
 - [Build and release](doc/build.md)
+- [Looger](doc/looger.md)
 
 ## License
 

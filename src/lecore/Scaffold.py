@@ -284,7 +284,7 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
     Create a device class and missing configuration files in a directory, which typically already contains
     the register map JSON and its register name class (``*Regs.py``) from the LE register map generator::
 
-        <name>.py, __init__.py and __main__.py (if missing),
+        <name>.py, __init__.py, __main__.py and CLAUDE.md (if missing),
         ComSettings.json (+ UpgradeSettings.json, VisualSettings.json for Modbus)
 
     When the directory contains both Modbus and LeBin register map (and no protocol or reg_map is given), two classes
@@ -392,6 +392,14 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
         result[main] = 'overwritten' if os.path.exists(main) else 'created'
         _write_text(main, _main_source([(d[0], d[2]) for d in devices],
                                        os.path.basename(os.path.abspath(directory))))
+
+    # Usage notes for AI assistants (Claude Code), may be edited by user, so an existing one is never changed
+    claude = os.path.join(directory, 'CLAUDE.md')
+    if os.path.exists(claude):
+        result[claude] = 'kept'
+    else:
+        _write_text(claude, _claude_source(devices, os.path.basename(os.path.abspath(directory)), regs_found))
+        result[claude] = 'created'
     return result
 
 
@@ -424,6 +432,61 @@ def _device_source(name: str, protocol: str, map_file: str, com_file: str, regs:
             f"    {doc}\n"
             f"    \"\"\"\n"
             f"    reg_map = {json.dumps(map_file)}{regs_attr}{extra}\n")
+
+
+def _claude_source(devices: List[Tuple[str, str, str, str]], package: str,
+                   regs: Optional[Tuple[str, str]]) -> str:
+    """
+    Source of generated CLAUDE.md describing the device package API for AI assistants
+    :param devices: List of (class name, map file, protocol, communication settings file), Modbus first
+    :param package: Package name
+    :param regs: Register name class (module, class) or None
+    """
+    dual = len(devices) == 2
+    reg = 'Reg.NAME' if regs else '"NAME"'
+    names = (f"Name constants are in `{regs[0]}.py` (alias `Reg`)" if regs else
+             f"Names are listed by `python -m {package} --list`") + \
+        ", descriptions, limits and enumerations in the register map."
+    rows, api = [], []
+    for cls, map_file, proto, com_file in devices:
+        if proto == 'modbus':
+            rows.append(f"| `{cls}` | Modbus RTU | `{map_file}` | `{com_file}`, slave address in `VisualSettings.json` |")
+            api.append(f"with {cls}() as dev:  # Modbus RTU\n"
+                       f"    dev.open(comport='COM5', slave=1)  # omitted arguments from {com_file}\n"
+                       f"    value = dev.read({reg})  # None on communication error\n"
+                       f"    dev.write({reg}, value)  # 0 on success, None on error\n")
+        else:
+            rows.append(f"| `{cls}` | LeBin | `{map_file}` | `{com_file}`, USB VID/PID/SN in class attribute `usb` |")
+            api.append(f"with {cls}() as dev:  # LeBin\n"
+                       f"    ports = dev.search_com()  # COM ports by USB VID/PID/SN\n"
+                       f"    dev.open(comport=ports[0] if ports else None)\n"
+                       f"    value = dev.read({reg})  # None on communication error\n"
+                       f"    dev.write({reg}, value)  # True on success, None on error, "
+                       f"list writes consecutive registers\n")
+    imports = ", ".join([d[0] for d in devices] + (['Reg'] if regs else []))
+    opts = f"[--comport COM5]{' [--slave 3]' if devices[0][2] == 'modbus' else ''}"
+    cli = (f"python -m {package} --list                    # register names\n"
+           f"python -m {package} --read NAME [NAME ...]    # read and print values {opts}\n")
+    if dual:
+        cli += f"python -m {package} --lebin --read NAME       # the same over LeBin ({devices[1][0]})\n"
+    return (f"# {package} device package\n\n"
+            f"Python package `{package}` controls the device by [lecore](https://pypi.org/project/lecore/). "
+            f"Registers are accessed by name. {names}\n\n"
+            f"| Class | Protocol | Register map | Connection settings |\n"
+            f"|---|---|---|---|\n"
+            + "\n".join(rows) +
+            f"\n\n## Read register values from command line\n\n"
+            f"Run from the parent directory (or `python .` in this directory):\n\n"
+            f"```\n{cli}```\n\n"
+            f"## Python API\n\n"
+            f"```python\n"
+            f"from {package} import {imports}\n\n"
+            + "\n".join(api) +
+            f"```\n\n"
+            f"- `write()` validates values against the register map: read-only registers and out-of-range values "
+            f"raise `ValueError`, unknown names `RegisterNotFoundError` (`KeyError`).\n"
+            f"- `dev.upgrade_firmware(file)` returns True when upgraded and firmware version verified.\n"
+            f"- Full lecore guide: `python -m lecore guide`.\n")
 
 
 def _indent(code: str, spaces: int) -> str:

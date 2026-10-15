@@ -72,6 +72,10 @@ class TestScaffold(unittest.TestCase):
         self.assertEqual(dev.mb.s['comport'], 'COM9')
         dev.close()
         self.assertEqual(importlib.import_module(PKG).Reg.SYS_COMMAND, 'SYS_COMMAND')
+        with open(os.path.join(self.dir, 'CLAUDE.md'), encoding='utf-8') as f:
+            claude = f.read()
+        self.assertIn('dev.read(Reg.NAME)', claude)
+        self.assertNotIn('LeBin', claude)
 
     def test_lebin_existing_map(self):
         self._copy(RFTB.RftbLeBin.config_dir, 'rftb_registers.json', 'rftbRegs.py')
@@ -93,6 +97,12 @@ class TestScaffold(unittest.TestCase):
         for f in ('Dual.py', 'DualLeBin.py', 'ComSettings.json', 'ComSettings_LeBin.json', 'VisualSettings.json'):
             self.assertEqual(result[os.path.join(self.dir, f)], 'created')
         self.assertEqual(result[os.path.join(self.dir, 'rftbRegs.py')], 'used')
+        # Usage notes for AI assistants describe both protocols
+        with open(os.path.join(self.dir, 'CLAUDE.md'), encoding='utf-8') as f:
+            claude = f.read()
+        for text in ('`Dual` | Modbus RTU', '`DualLeBin` | LeBin', f'from {PKG} import Dual, DualLeBin, Reg',
+                     'dev.search_com()', f'python -m {PKG} --lebin --read NAME'):
+            self.assertIn(text, claude)
         pkg = importlib.import_module(PKG)
         # Register names follow LeBin map, the Modbus map misses some of them
         self.assertIsNone(pkg.Dual.reg_names)
@@ -139,6 +149,7 @@ class TestScaffold(unittest.TestCase):
         # Existing entry point is kept
         result = lecore.new_device('Other', directory=self.dir)
         self.assertEqual(result[os.path.join(self.dir, '__main__.py')], 'kept')
+        self.assertEqual(result[os.path.join(self.dir, 'CLAUDE.md')], 'kept')
 
     def test_keep_configs(self):
         self._copy(PE.PhaseDet.config_dir, 'PhaseDet_Modbus.json', 'PhaseDetRegs.py', 'ComSettings.json')

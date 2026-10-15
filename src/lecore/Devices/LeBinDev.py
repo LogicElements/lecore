@@ -228,8 +228,8 @@ class LeBinDev(DeviceBase):
         check_file(file, "File to send")
         # Run upgrade procedure
         self._upg.load_file(file)
-        ret = self._upg.run()
-        return ret == 0
+        # LeBin upgrade returns True on success (unlike Modbus return code 0)
+        return bool(self._upg.run())
 
     def _visual(self) -> None:
         """

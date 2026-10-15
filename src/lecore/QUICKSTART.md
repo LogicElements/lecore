@@ -29,6 +29,7 @@ Python API: `lecore.new_device("MyDevice", directory=".", ...)` returns `{path: 
 | `VisualSettings.json` | created if missing (Modbus only) - GUI settings incl. default `slave_address` |
 | `__init__.py` | created if missing - exports device class, register class and alias `Reg`; existing one is not changed |
 | `__main__.py` | created if missing - command line: `python -m <package> [--comport COM5] [--slave 3] [--read NAME ...] [--list] [--gui \| --tui]` |
+| `CLAUDE.md` | created if missing - short API and command line notes (Modbus/LeBin) for AI assistants; existing one is not changed |
 
 Run it from the package directory as `python . [options]`, or from its parent as `python -m mydevice [options]`;
 without options all registers are read and printed. `python MyDevice.py` does not work (relative imports).
