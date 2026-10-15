@@ -47,39 +47,63 @@ class LastRecordHandler(logging.Handler):
 
 class AppLogging:
     """
-    Logging class that stores info messages into log file
+    Logging class that keeps recent messages for the status window and optionally stores them into log file
     """
     LOG_DIRECTORY = 'log/'
     FILE_NAME = dt.datetime.now().strftime("%Y-%m-%d-%H-%M.log")
+    #: Default of logging into file for new instances (disabled, enable by enable_file() or file=True)
+    FILE_ENABLED = False
 
-    def __init__(self, level=logging.INFO):
+    def __init__(self, level=logging.INFO, file=None):
         """
-        Create new log file and set all loggers and formatter
+        Set all loggers and formatter, optionally create new log file
         :param level: Default logging level
+        :param file: True to log into file, False not to, None to use class default FILE_ENABLED
         """
-        if not os.path.exists(self.LOG_DIRECTORY):
-            os.makedirs(self.LOG_DIRECTORY)
+        self.level = level
+        self.fh = None
 
         # Formatter for logging into file and console
         logger = logging.getLogger()
         logger.setLevel(level)
-        fh = logging.FileHandler(self.LOG_DIRECTORY + self.FILE_NAME)
-        fh.setLevel(level)
+        self.formatter = logging.Formatter('%(asctime)-15s %(levelname)-8s %(module)s:%(lineno)s - %(message)s')
         ch = logging.StreamHandler()
         ch.setLevel(logging.ERROR)
-        formatter = logging.Formatter('%(asctime)-15s %(levelname)-8s %(module)s:%(lineno)s - %(message)s')
-        fh.setFormatter(formatter)
-        ch.setFormatter(formatter)
-        logger.addHandler(fh)
+        ch.setFormatter(self.formatter)
         logger.addHandler(ch)
         self.lrl = LastRecordHandler()
         logger.addHandler(self.lrl)
+
+        if self.FILE_ENABLED if file is None else file:
+            self.enable_file()
 
         self.log = logging.getLogger()
         self.log.info('Application started')
 
         self.head = []
         self.values = []
+
+    def enable_file(self, enable=True, directory=None):
+        """
+        Enable or disable logging into file
+        :param enable: True to enable, False to disable logging into file
+        :param directory: Directory of log files, default LOG_DIRECTORY
+        :return: None
+        """
+        logger = logging.getLogger()
+        if self.fh is not None:
+            logger.removeHandler(self.fh)
+            self.fh.close()
+            self.fh = None
+        if not enable:
+            return
+        directory = self.LOG_DIRECTORY if directory is None else directory
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        self.fh = logging.FileHandler(os.path.join(directory, self.FILE_NAME))
+        self.fh.setLevel(self.level)
+        self.fh.setFormatter(self.formatter)
+        logger.addHandler(self.fh)
 
     def report_add(self, head, value):
         """

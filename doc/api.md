@@ -11,6 +11,7 @@ registers are addressed by name (`Reg` constants), values are checked against th
 | `upgrade_firmware(file, reboot_time=5)` | `True` when upgraded and `FIRM_REVISION` matches the file | same |
 | `search_com()` | - | COM ports matching the USB VID/PID/serial number |
 | `close()` | closes the COM port | closes the COM port |
+| `enable_log(enable=True, directory=None)` | enables/disables communication log into file (`log/` by default) | - |
 
 Parameters not given to `open()` are taken from `ComSettings*.json` of the device.
 

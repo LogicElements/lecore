@@ -190,6 +190,16 @@ class ModbusDev(DeviceBase):
         self.close()
         return self._vis.handle(timeout)
 
+    def enable_log(self, enable: bool = True, directory: Optional[PathLike] = None) -> None:
+        """
+        Enable or disable logging of communication into file (disabled by default)
+        :param enable: True to enable, False to disable logging into file
+        :param directory: Directory of log files, default 'log/' in current working directory
+        """
+        if self._vis is None:
+            raise RuntimeError(f"{type(self).__name__}: device is not initialized")
+        self._vis.log.enable_file(enable, directory)
+
     def textual(self) -> None:
         """
         Run textual user interface application

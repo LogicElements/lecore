@@ -8,7 +8,7 @@ from .MbClient import MbClient
 import VmSettings as s
 
 # Start logging into log file
-log = AppLogging(logging.WARNING)
+log = AppLogging(logging.WARNING, file=True)
 # Load settings from multiple JSONs
 s.read_settings(['VisualSettings.json', 'UpgradeSettings.json', 'ComSettings.json'])
 # Open modbus client connection
