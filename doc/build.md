@@ -17,6 +17,10 @@ py -3.14 -m venv .venv
 
 Most tests communicate with real hardware (COM ports) or the Looger server, so they cannot pass without the devices.
 
+CI (GitHub Actions, `.github/workflows/ci.yml`) builds the package and runs the tests without hardware
+(`tests/test_scaffold.py`, `tests/test_devices.py`) against the installed wheel on Linux and Windows,
+Python 3.9 with pymodbus 2.x and Python 3.14 with pymodbus 3.x. New tests not needing devices should be added there.
+
 ## Build
 
 ```

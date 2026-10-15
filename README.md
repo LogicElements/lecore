@@ -1,5 +1,6 @@
 # LE core package
 
+[![CI](https://github.com/LogicElements/lecore/actions/workflows/ci.yml/badge.svg)](https://github.com/LogicElements/lecore/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/lecore)](https://pypi.org/project/lecore/)
 [![Python](https://img.shields.io/pypi/pyversions/lecore)](https://pypi.org/project/lecore/)
 [![License](https://img.shields.io/pypi/l/lecore)](LICENSE)

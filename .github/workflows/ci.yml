@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }} / pymodbus ${{ matrix.pymodbus }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.9", "3.14"]
+        include:
+          - python: "3.9"
+            pymodbus: "2.x"
+            pymodbus-req: "pymodbus>=2.5,<3"
+          - python: "3.14"
+            pymodbus: "3.x"
+            pymodbus-req: "pymodbus>=3,<4"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Build package
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+      # Tests run against the installed wheel, so missing package data is detected
+      - name: Install wheel
+        shell: bash
+        run: python -m pip install dist/*.whl pytest "${{ matrix.pymodbus-req }}"
+      # Only tests without hardware (COM port devices) and network (Looger server)
+      - name: Test
+        run: python -m pytest -q tests/test_scaffold.py tests/test_devices.py
