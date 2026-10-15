@@ -23,8 +23,8 @@ jobs:
             pymodbus: "3.x"
             pymodbus-req: "pymodbus>=3,<4"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
