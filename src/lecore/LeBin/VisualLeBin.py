@@ -1,5 +1,6 @@
 import time
 from .RegisterMap import *
+from .UpgradeFirmware import UpgradeFirmware
 from .._version import __version__
 try:
     import FreeSimpleGUI as SG
@@ -17,6 +18,7 @@ class VisualLeBin:
     HEX_SUFFIX = "_H"
     READ_SUFFIX = "_READ_BTN"
     INF_SUFFIX = "_INFO_BTN"
+    UPG_FILE = "T_UPG_FILE"
 
     def __init__(self, regs: RegisterMap):
         """
@@ -55,6 +57,8 @@ class VisualLeBin:
             layout.append([SG.Column(col1, key='C_REGS', scrollable=True, vertical_scroll_only=True,
                                      size=(width, height), pad=(0, 0))])
             # layout.append()
+            layout.append([SG.FileBrowse('Select file'), SG.Button('Upgrade', key='B_UPGRADE'),
+                           SG.Input(key=self.UPG_FILE)])
             layout.append([SG.Submit('Write'), SG.Button('Write All'), SG.Button('Read'),
                            SG.Button('Connect', key='B_COMPORT'), SG.Cancel('Close'),
                            SG.Text("Period"), SG.Input('1000', size=(5, 1), key='T_PERIOD'),
@@ -93,27 +97,42 @@ class VisualLeBin:
             if event in (None, 'Close'):
                 self.regs.com.close()
                 break
-            if 'Write' in event:
-                self.regs.from_visual(values, self.HEX_SUFFIX)
-                self.update()
-            if 'Write All' in event:
-                self.regs.write_all()
-            if event in 'Read':
-                self.regs.read_all()
-                self.update()
-            if event in 'B_COMPORT':
-                self.connect_dis()
-            if self.READ_SUFFIX in event:
-                self.regs.read_by_name(event.replace(self.READ_SUFFIX, ""))
-                self.update()
-            if self.INF_SUFFIX in event:
-                self.show_info(event.replace(self.INF_SUFFIX, ""))
-            if self.connected:
-                self.window['T_RSSI'].Update(self.regs.com.get_rssi())
+            try:
+                self._handle_event(event, values)
+            except Exception as e:
+                # Communication errors (e.g. not existing COM port) are reported, application keeps running
+                self.window['T_STATUS'].Update(f'Error: {e}')
 
             to = max(min(int(values['T_PERIOD']), 10000), 500)
         self.window.close()
         return True
+
+    def _handle_event(self, event, values):
+        """
+        Handle one window event
+        :param event: Event from window
+        :param values: Values from window
+        :return: None
+        """
+        if 'Write' in event:
+            self.regs.from_visual(values, self.HEX_SUFFIX)
+            self.update()
+        if 'Write All' in event:
+            self.regs.write_all()
+        if event in 'Read':
+            self.regs.read_all()
+            self.update()
+        if event in 'B_COMPORT':
+            self.connect_dis()
+        if self.READ_SUFFIX in event:
+            self.regs.read_by_name(event.replace(self.READ_SUFFIX, ""))
+            self.update()
+        if self.INF_SUFFIX in event:
+            self.show_info(event.replace(self.INF_SUFFIX, ""))
+        if event == 'B_UPGRADE' and values[self.UPG_FILE] != '':
+            self.upgrade(values[self.UPG_FILE])
+        if self.connected:
+            self.window['T_RSSI'].Update(self.regs.com.get_rssi())
 
     def connect_dis(self):
         """
@@ -125,8 +144,10 @@ class VisualLeBin:
             if self.regs.com.ble:
                 dev = self.regs.com.scan(1, name="balb", scans=4)
                 self.regs.com.connect(address=dev, interval=30, subscribe=True)
-            else:
-                self.regs.com.reopen()
+            elif not self.regs.com.reopen():
+                self.window['T_STATUS'].Update(f'Cannot open COM port {self.regs.com.comport}')
+                return
+            self.window['T_STATUS'].Update('Connected')
             self.window['B_COMPORT'].Update('Disconn')
             self.connected = 1
         else:
@@ -137,6 +158,41 @@ class VisualLeBin:
                 self.regs.com.close()
             self.window['B_COMPORT'].Update('Connect')
             self.connected = 0
+
+    def upgrade(self, file_name):
+        """
+        Upgrade firmware from given binary file. Connects to the device if not connected yet. The device reboots
+        afterwards, so the connection is closed and has to be opened again by the Connect button.
+        :param file_name: Binary file to upgrade
+        :return: True on successful upgrade
+        """
+        if not self.connected:
+            self.connect_dis()
+            if not self.connected:
+                SG.popup(self.window['T_STATUS'].get(), title='Firmware upgrade')
+                return False
+        self.window['T_STATUS'].Update(f'Upgrading firmware from {file_name} ...')
+        self.window.refresh()
+        upg = UpgradeFirmware(self.regs.com)
+        try:
+            upg.load_file(file_name)
+            ret = upg.run(lambda progress, size: SG.OneLineProgressMeter(
+                'Upgrade progress bar', progress, size, 'KEY_PROGRESS'))
+            if ret:
+                msg = 'Upgrade finished, device is rebooting, reconnect'
+            else:
+                resp = bytes(upg.response or b'').hex(' ') or 'none'
+                msg = f'Upgrade failed at offset {upg.offset} of {upg.length}, ' \
+                      f'no or bad response from device: {resp}'
+        except Exception as e:
+            ret = False
+            msg = f'Upgrade failed: {e}'
+        SG.OneLineProgressMeterCancel('KEY_PROGRESS')
+        # Device reboots after upgrade, close connection
+        self.connect_dis()
+        self.window['T_STATUS'].Update(msg)
+        SG.popup(msg, title='Firmware upgrade')
+        return ret
 
     def show_info(self, name):
         """

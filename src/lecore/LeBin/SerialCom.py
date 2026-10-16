@@ -50,10 +50,12 @@ class SerialCom:
 
     def reopen(self):
         """
-        Re-open COM port
-        :return: None
+        Re-open COM port. Port opened before (e.g. implicitly by a request) is closed first,
+        otherwise the second open of the same port fails
+        :return: True on success, False on serial exception
         """
-        self._open_comport()
+        self.close()
+        return self._open_comport()
 
     def close(self):
         """

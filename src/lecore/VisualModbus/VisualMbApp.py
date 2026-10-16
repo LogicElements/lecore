@@ -35,6 +35,8 @@ class VisualMbApp:
     INF_SUFFIX = "_INFO_BTN"
     READ_SUFFIX = "_READ_BTN"
     UPG_FILE = '_UPG_FILE'
+    #: Line spacing of the status log window as a multiple of the line height (1 = no extra space)
+    LOG_LINE_SPACING = 1.3
 
     def __init__(self, visual='VisualSettings.json', upgrade='UpgradeSettings.json', com='ComSettings.json',
                  slave=None, reg_map=None, mb=None):
@@ -138,7 +140,11 @@ class VisualMbApp:
                     if event_log in (None, 'Close'):
                         self.win_log = None
                     else:
-                        self.win_log['T_LOG'].Update(self.log.lrl.get_record())
+                        # Update only on change, so that manual scrolling is not reset
+                        record = self.log.lrl.get_record()
+                        if record != self._log_text:
+                            self._log_text = record
+                            self.win_log['T_LOG'].Update(record)
         self.window.close()
         return True
 
@@ -185,8 +191,19 @@ class VisualMbApp:
         Show window containing most recent log entries
         :return: Window object
         """
-        lay = [[SG.Text(self.log.lrl.get_record(), key='T_LOG', size=(50, 35))]]
-        return SG.Window('Status log', lay, resizable=True, auto_size_text=True, auto_size_buttons=True, finalize=True)
+        self._log_text = self.log.lrl.get_record()
+        # Window height in lines is reduced by the line spacing, so the window keeps its original size
+        height = round(35 / self.LOG_LINE_SPACING)
+        lay = [[SG.Multiline(self._log_text, key='T_LOG', size=(80, height), disabled=True, autoscroll=True,
+                             expand_x=True, expand_y=True)]]
+        window = SG.Window('Status log', lay, resizable=True, auto_size_text=True, auto_size_buttons=True,
+                           finalize=True)
+        # Line spacing as a multiple of the font line height, implemented by extra space after each log record
+        from tkinter import font as tkfont
+        text = window['T_LOG'].Widget
+        line_height = tkfont.Font(font=text.cget('font')).metrics('linespace')
+        text.configure(spacing3=round(line_height * (self.LOG_LINE_SPACING - 1)))
+        return window
 
     def _show_info(self, name):
         """

@@ -7,7 +7,7 @@ class LastRecordHandler(logging.Handler):
     """
     Class that implements buffer for last X logging messages
     """
-    MAX_COUNT = 7
+    MAX_COUNT = 500
 
     def __init__(self):
         """
@@ -36,7 +36,7 @@ class LastRecordHandler(logging.Handler):
         """
         ret = "STATUS WINDOW \n(from oldest to newest)"
         for rec in self.records:
-            ret += '\n\n' + rec.asctime + ' - ' + rec.getMessage()
+            ret += '\n' + rec.asctime + ' - ' + rec.getMessage()
         return ret
 
     def get_one_liner(self):

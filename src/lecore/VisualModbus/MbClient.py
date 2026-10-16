@@ -10,6 +10,11 @@ except ModuleNotFoundError:
     from pymodbus.client import ModbusSerialClient as ModbusClient
 
 try:
+    from pymodbus.exceptions import ModbusException
+except ImportError:
+    ModbusException = OSError
+
+try:
     from pymodbus.framer import FramerType
 except ImportError:
     FramerType = None
@@ -150,12 +155,14 @@ class MbClient:
                     return None
                 if self.open() is False:
                     return None
-        if request['Type'].lower() == 'Input'.lower():
-            ret = self.read_input(request)
-        else:
-            ret = self.read_hold(request)
-        if self._connectionless:
-            self.client.close()
+        try:
+            if request['Type'].lower() == 'Input'.lower():
+                ret = self.read_input(request)
+            else:
+                ret = self.read_hold(request)
+        finally:
+            if self._connectionless:
+                self.client.close()
         return ret
 
     def read_input(self, request):
@@ -165,7 +172,13 @@ class MbClient:
         :return: Array of read register values on success
         :return: None on read error
         """
-        self.rr = self.client.read_input_registers(request['Address'], count=request['Count'], **{_DEVICE_KW: request['Slave']})
+        try:
+            self.rr = self.client.read_input_registers(request['Address'], count=request['Count'],
+                                                       **{_DEVICE_KW: request['Slave']})
+        except (ModbusException, OSError) as e:
+            self.rr = None
+            self.log.error('{!r} {}'.format(e, request))
+            return None
         if self.rr.isError():
             self.log.error(str(self.rr) + str(request))
             return None
@@ -181,7 +194,13 @@ class MbClient:
         :return: Array of read register values on success
         :return: None on read error
         """
-        self.rr = self.client.read_holding_registers(request['Address'], count=request['Count'], **{_DEVICE_KW: request['Slave']})
+        try:
+            self.rr = self.client.read_holding_registers(request['Address'], count=request['Count'],
+                                                         **{_DEVICE_KW: request['Slave']})
+        except (ModbusException, OSError) as e:
+            self.rr = None
+            self.log.error('{!r} {}'.format(e, request))
+            return None
         if self.rr.isError():
             self.log.error(str(self.rr) + str(request))
             return None
@@ -208,9 +227,16 @@ class MbClient:
                     return None
                 if self.open() is False:
                     return None
-        self.rr = self.client.write_registers(request['Address'], request['Values'], **{_DEVICE_KW: request['Slave']})
-        if self._connectionless:
-            self.client.close()
+        try:
+            self.rr = self.client.write_registers(request['Address'], request['Values'],
+                                                  **{_DEVICE_KW: request['Slave']})
+        except (ModbusException, OSError) as e:
+            self.rr = None
+            self.log.error('{!r} {}'.format(e, request))
+            return None
+        finally:
+            if self._connectionless:
+                self.client.close()
         if isinstance(self.rr, bytes):
             return 0
         if self.rr.isError():

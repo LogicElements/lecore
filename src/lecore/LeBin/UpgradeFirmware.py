@@ -7,6 +7,8 @@ class UpgradeFirmware:
     REQUEST = 255
     RESPONSE = 127
     PAGE_SIZE = 1024
+    #: Response timeout in seconds for the first page, the device erases flash before acknowledging it
+    ERASE_TIMEOUT = 15
 
     def __init__(self, com):
         """
@@ -17,6 +19,7 @@ class UpgradeFirmware:
         self.offset = 0
         self.length = 0
         self.data = None
+        self.response = None
 
     def load_file(self, filename):
         """
@@ -29,9 +32,10 @@ class UpgradeFirmware:
         self.length = len(self.data)
         self.offset = 0
 
-    def send_request(self):
+    def send_request(self, timeout=None):
         """
         Create and send Firmware upgrade request packet. Receive and return response
+        :param timeout: Response timeout in seconds overriding the serial port one for this request, None to keep it
         :return: Received response packet
         """
         length = min(self.PAGE_SIZE, self.length - self.offset) + 8
@@ -39,7 +43,17 @@ class UpgradeFirmware:
         idx = struct.pack('L', self.offset)
         request = bytearray(header) + bytearray(idx) + self.data[self.offset:self.offset + length - 8]
         # print(f"Sending offset {self.offset}, length {length - 8}")
-        return self.com.request_response(request, 12)
+        port = getattr(self.com, 'port', None)
+        orig = getattr(port, 'timeout', None)
+        if timeout is None or orig is None:
+            self.response = self.com.request_response(request, 12)
+            return self.response
+        port.timeout = max(orig, timeout)
+        try:
+            self.response = self.com.request_response(request, 12)
+        finally:
+            port.timeout = orig
+        return self.response
 
     def parse_response(self, response):
         """
@@ -76,7 +90,7 @@ class UpgradeFirmware:
         while ret:
             if progress_clb is not None:
                 progress_clb(self.offset, self.length)
-            response = self.send_request()
+            response = self.send_request(self.ERASE_TIMEOUT if self.offset == 0 else None)
             if self.offset == self.length:
                 return self.parse_response(response)
             ret = self.parse_response(response)
