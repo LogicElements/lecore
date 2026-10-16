@@ -355,7 +355,9 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
                               f"reg_names of {cls_name} is not declared", UserWarning, stacklevel=2)
 
         # Configuration files, existing ones are kept
-        configs = {com_file: dict(_COM_SETTINGS, comport=comport, baud_rate=baud_rate, parity=parity)}
+        # Com port, baud rate and parity apply to the Modbus device, LeBin of a dual device keeps the defaults
+        com = {} if dual and proto == 'lebin' else dict(comport=comport, baud_rate=baud_rate, parity=parity)
+        configs = {com_file: dict(_COM_SETTINGS, **com)}
         if proto == 'modbus':
             configs['UpgradeSettings.json'] = _UPGRADE_SETTINGS
             configs['VisualSettings.json'] = dict(_VISUAL_SETTINGS, slave_address=slave, reg_map=map_file)
@@ -375,6 +377,12 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
     init = os.path.join(directory, '__init__.py')
     if os.path.exists(init):
         result[init] = 'kept'
+        with open(init, encoding='utf-8') as f:
+            init_text = f.read()
+        absent = [d[0] for d in devices if not re.search(rf"import\s+(?:.*[\s,])?{re.escape(d[0])}(?![\w])", init_text)]
+        if absent:
+            warnings.warn(f"{init} is kept and does not export {', '.join(absent)}: 'from package import {absent[0]}' "
+                          f"returns the submodule, add 'from .{absent[0]} import {absent[0]}'", stacklevel=2)
     else:
         text = "".join(f"from .{d[0]} import {d[0]}\n" for d in devices)
         if regs_found:

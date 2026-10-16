@@ -18,17 +18,18 @@ class SerialCom:
         self.timeout = 1.0
         self.comport = None
 
-    def open(self, filename):
+    def open(self, filename, comport=None):
         """
         Open com port with given communication settings
         :param filename: Json settings of COM port
+        :param comport: Com port name overriding the one from settings, None to use settings
         :return: None
         """
         with io.open(filename, 'r', encoding='utf-8-sig') as f:
             s = json.load(f)
             self.settings = s
 
-        self.comport = s['comport']
+        self.comport = s['comport'] if comport is None else comport
         self.baud = s['baud_rate']
         self.stop = s['stop_bits']
         self.parity = s['parity']

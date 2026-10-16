@@ -250,7 +250,9 @@ class LeBinDev(DeviceBase):
         """
         self._com_file = self._path_complete(settings, self._def_com, "Communication settings")
         ComSettings.from_json(self._com_file)
-        self.com.open(self._com_file)
+        # A device with USB identification is looked up by it, the com port in settings is only a fallback
+        ports = self.search_com() if self.usb.vid else []
+        self.com.open(self._com_file, ports[0] if ports else None)
 
     def _reg_map(self, reg_map: Optional[PathLike]) -> None:
         """

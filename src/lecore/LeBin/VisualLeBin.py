@@ -1,5 +1,6 @@
 import time
 from .RegisterMap import *
+from .._version import __version__
 try:
     import FreeSimpleGUI as SG
 except ImportError:
@@ -60,7 +61,7 @@ class VisualLeBin:
                            SG.Text("RSSI"), SG.Input('-1', size=(4, 1), key='T_RSSI')])
             layout.append([SG.Text('Status', key='T_STATUS', size=(width // 8, None))])
 
-            self.window = SG.Window('LeBin visual application. Version: 1.1', layout, resizable=True, finalize=True)
+            self.window = SG.Window('LeBin visual application. Version: ' + __version__, layout, resizable=True, finalize=True)
             self.update()
         except AttributeError:
             raise ImportError("FreeSimpleGUI is probably missing")

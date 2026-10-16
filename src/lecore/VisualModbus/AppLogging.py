@@ -14,6 +14,7 @@ class LastRecordHandler(logging.Handler):
         Initialize logging handler and clear all records
         """
         logging.Handler.__init__(self)
+        self.formatter = logging.Formatter()
         self.records = []
 
     def emit(self, record):
@@ -22,6 +23,8 @@ class LastRecordHandler(logging.Handler):
         :param record: Current record
         :return: None
         """
+        # asctime is set only by Formatter.format(), which this handler does not call
+        record.asctime = self.formatter.formatTime(record)
         self.records.append(record)
         if len(self.records) > self.MAX_COUNT:
             self.records.pop(0)

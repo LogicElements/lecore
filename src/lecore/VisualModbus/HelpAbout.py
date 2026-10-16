@@ -7,13 +7,7 @@ except ImportError:
     except ImportError:
         import datetime as SG
 
-VERSION_MAJOR = 0
-
-VERSION_MINOR = 1
-
-VERSION_BUILD = 8
-
-VERSION = "{}.{}.{}".format(VERSION_MAJOR, VERSION_MINOR, VERSION_BUILD)
+from .._version import __version__ as VERSION
 
 RELEASE_NOTE_9 = "2020/01/31 - 0.1.8 - \n"\
                  " - Fix podpory čtení a zápisu stringů \n" \
