@@ -20,8 +20,8 @@ jobs:
             pymodbus: "2.x"
             pymodbus-req: "pymodbus>=2.5,<3"
           - python: "3.14"
-            pymodbus: "3.x"
-            pymodbus-req: "pymodbus>=3,<4"
+            pymodbus: "latest"
+            pymodbus-req: "pymodbus>=3"
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -38,4 +38,4 @@ jobs:
         run: python -m pip install dist/*.whl pytest "${{ matrix.pymodbus-req }}"
       # Only tests without hardware (COM port devices) and network (Looger server)
       - name: Test
-        run: python -m pytest -q tests/test_scaffold.py tests/test_devices.py
+        run: python -m pytest -q tests/test_scaffold.py tests/test_devices.py tests/test_byte_order.py tests/test_device_suite.py

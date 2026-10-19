@@ -5,11 +5,11 @@ New device classes: run ``python -m lecore guide`` (or ``lecore.guide()``) for a
 and ``python -m lecore new-device MyDevice [--lebin]`` to generate a device package.
 """
 from .Looger import Looger
-from .Scaffold import guide, new_device, generate_regs
+from .Scaffold import guide, new_device, generate_regs, generate_tests
 
 _DEVICE_NAMES = ('DeviceBase', 'ModbusDev', 'LeBinDev', 'ComSettings', 'UsbId', 'RegisterNotFoundError')
 
-__all__ = ['Looger', 'guide', 'new_device', 'generate_regs', *_DEVICE_NAMES]
+__all__ = ['Looger', 'guide', 'new_device', 'generate_regs', 'generate_tests', *_DEVICE_NAMES]
 
 
 def __getattr__(name):

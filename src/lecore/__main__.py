@@ -5,7 +5,7 @@ import argparse
 import sys
 import warnings
 
-from .Scaffold import guide, new_device, generate_regs
+from .Scaffold import guide, new_device, generate_regs, generate_tests
 
 
 def _show_warning(message, category, filename, lineno, file=None, line=None):
@@ -38,6 +38,11 @@ def main(argv=None) -> int:
     p.add_argument("--usb", nargs=3, metavar=("VID", "PID", "SN"), help="LeBin USB identification for search_com()")
     p.add_argument("--force", action="store_true", help="overwrite existing device module and configuration files")
 
+    p = sub.add_parser("new-tests", help="create missing communication test files (test_modbus.py, test_lebin.py) "
+                                         "for device classes in a directory")
+    p.add_argument("--dir", default=".", help="directory with device modules (default: current)")
+    p.add_argument("--force", action="store_true", help="overwrite existing test files")
+
     p = sub.add_parser("regs", help="generate class with register name constants from a register map")
     p.add_argument("reg_map", help="register map JSON (Modbus or LeBin)")
     p.add_argument("--class", dest="class_name", default="Regs", help="generated class name")
@@ -52,6 +57,9 @@ def main(argv=None) -> int:
             result = new_device(args.name, args.protocol, args.dir, args.reg_map, args.template, args.gen_regs,
                                 args.slave, args.comport, args.baud_rate, args.parity, usb, args.force)
             for path, status in result.items():
+                print(f"{status:12}{path}")
+        elif args.cmd == "new-tests":
+            for path, status in generate_tests(args.dir, args.force).items():
                 print(f"{status:12}{path}")
         elif args.cmd == "regs":
             src = generate_regs(args.reg_map, args.class_name, args.output)

@@ -16,7 +16,7 @@ def _get_values_for_mb(reg):
         values = values if values >= 0 else values + (1 << 16)
         values = [values]
     elif reg['Format'] == 'FLOAT32':
-        number = struct.unpack('L', struct.pack('f', float(reg['Value'])))[0]
+        number = struct.unpack('<L', struct.pack('<f', float(reg['Value'])))[0]
         values = [number & short_mask, number >> 16]
     elif reg['Format'] == 'STRING':
         number = bytearray(str(reg['Value']), encoding='utf-8')
@@ -41,7 +41,7 @@ def _set_value_from_mb(reg, values):
         reg['Value'] = str(float(values[0] if values[0] < (1 << 15) else values[0] - (1 << 16)) / 10)
     elif reg['Format'] == 'FLOAT32':
         number = int(values[0]) + (int(values[1]) << 16)
-        reg['Value'] = str(round(struct.unpack('f', struct.pack('L', number))[0], 4))
+        reg['Value'] = str(round(struct.unpack('<f', struct.pack('<L', number))[0], 4))
     elif reg['Format'] == 'STRING':
         buf = bytearray(len(values) * 2)
         for i in range(len(values)):

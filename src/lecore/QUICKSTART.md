@@ -30,6 +30,7 @@ Python API: `lecore.new_device("MyDevice", directory=".", ...)` returns `{path: 
 | `__init__.py` | created if missing - exports device class, register class and alias `Reg`; existing one is not changed |
 | `__main__.py` | created if missing - command line: `python -m <package> [--comport COM5] [--slave 3] [--read NAME ...] [--list] [--gui \| --tui]` |
 | `CLAUDE.md` | created if missing - short API and command line notes (Modbus/LeBin) for AI assistants; existing one is not changed |
+| `test_modbus.py` / `test_lebin.py` | created (kept unless `--force`) - pytest communication tests of the device, see section 5 |
 
 Run it from the package directory as `python . [options]`, or from its parent as `python -m mydevice [options]`;
 without options all registers are read and printed. `python MyDevice.py` does not work (relative imports).
@@ -86,7 +87,38 @@ with MyDevice() as dev:
 # dev.visual() - GUI, dev.textual() - TUI (Modbus), dev.upgrade_firmware("fw.bin") needs FIRM_REVISION register
 ```
 
-## 5. Rules and checks
+## 5. Communication tests
+
+`new-device` creates `test_modbus.py` / `test_lebin.py` (one per generated class, kept unless `--force`); for an
+existing device package `python -m lecore new-tests [--dir D] [--force]` (or `lecore.generate_tests()`) creates the
+missing ones. The tests come from `lecore.DeviceTests` (`ModbusDeviceTests`, `LeBinDeviceTests`), the generated file
+only configures them by class attributes:
+
+```python
+from lecore.DeviceTests import ModbusDeviceTests
+from .MyDevice import MyDevice
+from .MyDeviceRegs import MyDeviceRegs as Reg
+
+
+class TestMyDevice(ModbusDeviceTests):
+    device_class = MyDevice
+    open_kwargs = {'comport': 'COM5', 'slave': 3}   # empty: ComSettings*.json defaults
+    test_register = Reg.SYS_TEST    # safe to write, None skips the read-back test
+    exclude = []                    # registers not read by the read-all test
+    firmware = "fw/MyDevice.bin"    # None skips the upgrade test
+    reboot_time = 5
+    # unknown_address = 65000 / wrong_slave = 247 (Modbus), unknown_id = 0x7FFFFF02 (LeBin)
+    # override classmethod create_device() returning an opened device for an exact device definition
+```
+
+Tests (real device, opened once per class): read, write with read-back (original value restored), read of all
+registers (failures listed at once), register present in the map but unknown to the device (read returns `None`,
+device answers afterwards), wrong slave address (Modbus), locally rejected writes (read-only, out of `Min`/`Max`;
+nothing is sent), close and reopen, firmware upgrade (last). Run them by plain pytest, results by the runner, e.g.
+`python -m pytest . --junitxml=report.xml`. All tests carry marker `hardware`: deselect them without devices by
+`-m "not hardware"`; without deselecting they fail when the device does not answer.
+
+## 6. Rules and checks
 
 - Register map formats: Modbus keys `Name, Type (HOLD/INPUT), Address [list], Format (INT/BIN/ENUM/FLOAT/FLOAT32/STRING), Value`,
   optional `Access, Min, Max, EnumValue, Label, Unit, Description`. LeBin keys `Name, Id, VarType, Access`, optional `Category`.

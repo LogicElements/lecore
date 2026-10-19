@@ -40,7 +40,7 @@ class UpgradeFirmware:
         """
         length = min(self.PAGE_SIZE, self.length - self.offset) + 8
         header = [self.START_BYTE, self.REQUEST, length % 256, length // 256]
-        idx = struct.pack('L', self.offset)
+        idx = struct.pack('<L', self.offset)
         request = bytearray(header) + bytearray(idx) + self.data[self.offset:self.offset + length - 8]
         # print(f"Sending offset {self.offset}, length {length - 8}")
         port = getattr(self.com, 'port', None)
@@ -64,10 +64,10 @@ class UpgradeFirmware:
         """
         if len(response) != 12:
             return False
-        ret_code = struct.unpack_from('L', response, 8)[0]
+        ret_code = struct.unpack_from('<L', response, 8)[0]
         # print(f"Acknowledged offset {self.offset}, return code {ret_code}")
         if ret_code == 0:
-            self.offset = min(struct.unpack_from('L', response, 4)[0], self.length)
+            self.offset = min(struct.unpack_from('<L', response, 4)[0], self.length)
             return True
         else:
             return False

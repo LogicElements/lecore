@@ -117,7 +117,7 @@ class RegisterMap:
         for i in range(count):
             reg = self.regs[idx + i]
             resp_len += self.read_append_reg(msg, reg)
-        struct.pack_into('H', msg, 2, len(msg))
+        struct.pack_into('<H', msg, 2, len(msg))
         return self.request_resp(msg, resp_len)
 
     def read_all(self):
@@ -129,7 +129,7 @@ class RegisterMap:
         resp_len = 4
         for reg in self.regs:
             resp_len += self.read_append_reg(msg, reg)
-        struct.pack_into('H', msg, 2, len(msg))
+        struct.pack_into('<H', msg, 2, len(msg))
         return self.request_resp(msg, resp_len)
 
     def read_append_reg(self, msg, reg):
@@ -139,7 +139,7 @@ class RegisterMap:
         :param reg: Register to append
         :return: Length increment of msg
         """
-        val = struct.pack('L', reg['Id'])
+        val = struct.pack('<L', reg['Id'])
         msg += bytearray(val)
         return 4 + _reg_length(reg)
 
@@ -184,7 +184,7 @@ class RegisterMap:
             reg = self.regs[idx]
             self.write_append_reg(msg, reg, val)
             idx += 1
-        struct.pack_into('H', msg, 2, len(msg))
+        struct.pack_into('<H', msg, 2, len(msg))
         return self.request_resp(msg, len(msg))
 
     def write_all(self):
@@ -199,7 +199,7 @@ class RegisterMap:
             if reg['Access'] in ('RW', 'RWF'):
                 idx = self.regs.index(reg)
                 self.write_append_reg(msg, reg, reg['Value'])
-        struct.pack_into('H', msg, 2, len(msg))
+        struct.pack_into('<H', msg, 2, len(msg))
         return self.request_resp(msg, len(msg))
 
     def write_append_reg(self, msg, reg, value):
@@ -210,10 +210,10 @@ class RegisterMap:
         :param value: Value to write
         :return: None
         """
-        val = struct.pack('L', reg['Id'])
+        val = struct.pack('<L', reg['Id'])
         length = _reg_length(reg)
         if reg['VarType'] in 'FLOAT':
-            val2 = struct.pack('f', float(value))
+            val2 = struct.pack('<f', float(value))
         elif reg['VarType'] in 'STRING':
             val2 = bytearray(value, 'utf-8')
             val2 += bytearray(length - len(val2))
@@ -244,7 +244,7 @@ class RegisterMap:
         """
         idx = 4   # Skip header
         while idx <= len(data) - 5:
-            id_cur = struct.unpack_from('L', data, idx)[0]
+            id_cur = struct.unpack_from('<L', data, idx)[0]
             idx += 4
             reg = next(x for x in self.regs if x['Id'] == id_cur)
             length = _reg_length(reg)
@@ -252,7 +252,7 @@ class RegisterMap:
                 value = int.from_bytes(data[idx:idx+length:1], 'little')
                 reg['Value'] = str(value)
             if reg['VarType'] in 'FLOAT':
-                value = struct.unpack_from('f', data, idx)[0]
+                value = struct.unpack_from('<f', data, idx)[0]
                 reg['Value'] = str(round(value, 4))
             if reg['VarType'] in 'STRING':
                 value = str(data[idx:idx+length:1], 'utf-8').strip('\x00')

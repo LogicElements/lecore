@@ -15,7 +15,8 @@ python -m lecore guide       # condensed guide incl. all options
 
 `new-device` detects the protocol from the register map, uses the existing `*Regs.py` and creates the device module
 `MyDevice.py`, missing configuration JSONs (`ComSettings.json`, for Modbus also `UpgradeSettings.json` and
-`VisualSettings.json`), missing `__init__.py` and `__main__.py`. The package can then be run from its directory
+`VisualSettings.json`), missing `__init__.py` and `__main__.py` and communication tests `test_modbus.py` /
+`test_lebin.py` (see [Communication tests](#communication-tests)). The package can then be run from its directory
 as `python . [--comport COM5] [--slave 3] [--read NAME ...] [--list] [--gui | --tui]`, or from the parent directory
 as `python -m mydevice ...` (without options all registers are read and printed).
 
@@ -24,13 +25,49 @@ When the directory contains both Modbus and LeBin register map with common `*Reg
 `reg_names` is declared only where the map contains all register names. Existing files are kept, the device module is overwritten only with
 `--force`. Without a register map, `--template` creates a minimal one; `--gen-regs` or
 `python -m lecore regs MAP.json --class NameRegs -o NameRegs.py` generate a missing `*Regs.py`.
-The same is available as `lecore.new_device()`, `lecore.generate_regs()` and `lecore.guide()`. The guide is shipped
+The same is available as `lecore.new_device()`, `lecore.generate_tests()`, `lecore.generate_regs()` and `lecore.guide()`. The guide is shipped
 with the package (`src/lecore/QUICKSTART.md`), so it can be given to an AI assistant in projects using `lecore`.
 
 `new-device` also creates a missing `CLAUDE.md` in the package: a short description of the device classes
 (Modbus and/or LeBin), their `read()`/`write()` API and the command line (`--read`, `--list`). Claude Code loads it
 when working with files of the package; from a project root it can be included by `@mydevice/CLAUDE.md` in the root
 `CLAUDE.md`. An existing `CLAUDE.md` is never changed (delete it to regenerate, e.g., after adding a protocol).
+
+## Communication tests
+
+`new-device` generates a pytest file for each generated class: `test_modbus.py` (Modbus) and/or `test_lebin.py`
+(LeBin). Existing test files are kept unless `--force`. For a device package created earlier run
+`python -m lecore new-tests [--dir D] [--force]` (`lecore.generate_tests()`), it creates only the missing test files
+and does not touch the device modules and configuration.
+
+The tests themselves are in `lecore.DeviceTests` (`ModbusDeviceTests`, `LeBinDeviceTests`), so they are updated with
+`lecore`. The generated file only subclasses the suite and sets class attributes:
+
+| Attribute | Default | Meaning |
+|---|---|---|
+| `device_class` | generated class | Device class instantiated by `create_device()` |
+| `open_kwargs` | `{}` | Arguments of `open()`, empty uses `ComSettings*.json` (LeBin: port found by USB id) |
+| `test_register` | `Reg.SYS_TEST` if in the map, else `None` | Register safe to write by the read-back test, `None` skips it |
+| `exclude` | `[]` | Registers not read by the read-all test |
+| `firmware` | `None` | Firmware binary for the upgrade test, `None` skips it |
+| `reboot_time` | `5` | Wait after upgrade in seconds |
+| `unknown_address` / `wrong_slave` | `65000` / `247` | Modbus: address and slave address not answered by the device |
+| `unknown_id` | `0x7FFFFF02` | LeBin: register ID not supported by the device |
+
+For an exact device definition override classmethod `create_device()` returning an opened device; apply port
+settings through `open()`, the reopen test calls `close()` and `open()` without arguments.
+
+Tests in order (the device is opened once per test class): read, write with read-back of `test_register` (original
+value restored), read of all registers (all failures listed at once), register present in the map but unknown to
+the device (`read()` returns `None` and the device answers afterwards), wrong slave address (Modbus), locally
+rejected writes of a read-only and an out-of-range value (`ValueError`, nothing is sent: a stub client is used),
+close and reopen, firmware upgrade (last).
+
+The tests are plain pytest, a runner in a parent directory collects them and stores results, e.g.
+`python -m pytest . --junitxml=report.xml`. All of them carry marker `hardware` (registered by the lecore pytest
+plugin): `-m "not hardware"` deselects them on machines without devices; without deselecting they fail when the
+device does not answer, they are never skipped silently. For a device with both protocols both files reach the same
+device, enable the firmware upgrade in one of them only.
 
 ## Modbus device
 

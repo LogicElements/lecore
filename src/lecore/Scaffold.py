@@ -1,8 +1,9 @@
 """
-Jump-start helpers for new LE devices: quick guide, device class generator (in the directory with the register map)
-and register name class generator.
+Jump-start helpers for new LE devices: quick guide, device class generator (in the directory with the register map),
+device communication test generator and register name class generator.
 
-Command line: ``python -m lecore guide``, ``python -m lecore new-device MyDevice``, ``python -m lecore regs map.json``.
+Command line: ``python -m lecore guide``, ``python -m lecore new-device MyDevice``, ``python -m lecore new-tests``,
+``python -m lecore regs map.json``.
 The module avoids importing the Modbus/LeBin stack, so it works even without optional dependencies.
 """
 from __future__ import annotations
@@ -285,7 +286,8 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
     the register map JSON and its register name class (``*Regs.py``) from the LE register map generator::
 
         <name>.py, __init__.py, __main__.py and CLAUDE.md (if missing),
-        ComSettings.json (+ UpgradeSettings.json, VisualSettings.json for Modbus)
+        ComSettings.json (+ UpgradeSettings.json, VisualSettings.json for Modbus),
+        test_modbus.py / test_lebin.py (communication tests, see generate_tests())
 
     When the directory contains both Modbus and LeBin register map (and no protocol or reg_map is given), two classes
     sharing the register names are created: ``<name>`` (Modbus) and ``<name>LeBin`` with ``ComSettings_LeBin.json``.
@@ -301,7 +303,7 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
     :param baud_rate: Default baud rate (ComSettings*.json)
     :param parity: Default parity 'N', 'E' or 'O' (ComSettings*.json)
     :param usb: LeBin USB identification (vid, pid, sn) for search_com()
-    :param force: Overwrite existing device modules, configuration files and __main__.py
+    :param force: Overwrite existing device modules, configuration files, __main__.py and test files
     :return: Dictionary {file path: 'created' | 'overwritten' | 'kept' | 'used'}
     """
     _check_class_name(name)
@@ -401,6 +403,9 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
         _write_text(main, _main_source([(d[0], d[2]) for d in devices],
                                        os.path.basename(os.path.abspath(directory))))
 
+    # Communication tests of the generated classes, edited by user, so existing ones are kept unless force
+    _write_tests(directory, [(d[0], d[1], d[2]) for d in devices], force, result)
+
     # Usage notes for AI assistants (Claude Code), may be edited by user, so an existing one is never changed
     claude = os.path.join(directory, 'CLAUDE.md')
     if os.path.exists(claude):
@@ -409,6 +414,121 @@ def new_device(name: str, protocol: Optional[str] = None, directory: PathLike = 
         _write_text(claude, _claude_source(devices, os.path.basename(os.path.abspath(directory)), regs_found))
         result[claude] = 'created'
     return result
+
+
+TEST_FILES = {'modbus': 'test_modbus.py', 'lebin': 'test_lebin.py'}
+_DEVICE_BASES = {'ModbusDev': 'modbus', 'LeBinDev': 'lebin'}
+
+
+def generate_tests(directory: PathLike = '.', force: bool = False) -> Dict[str, str]:
+    """
+    Create missing communication test files (test_modbus.py, test_lebin.py) for device classes found in a directory,
+    e.g., for devices created before the tests were generated. Device modules and configuration files are not changed.
+    :param directory: Directory with device modules (classes derived directly from ModbusDev or LeBinDev)
+    :param force: Overwrite existing test files
+    :return: Dictionary {file path: 'created' | 'overwritten' | 'kept'}
+    """
+    directory = os.fspath(directory)
+    if not os.path.isdir(directory):
+        raise NotADirectoryError(f"Directory not found: {directory}")
+    found: Dict[str, List[Tuple[str, str]]] = {}
+    for f in sorted(os.listdir(directory)):
+        if not f.endswith('.py') or f.startswith('test_'):
+            continue
+        with io.open(os.path.join(directory, f), 'r', encoding='utf-8-sig') as fh:
+            text = fh.read()
+        m_map = re.search(r'^\s+reg_map\s*=\s*["\'](.+?)["\']', text, re.MULTILINE)
+        for cls, base in re.findall(r'^class\s+(\w+)\((ModbusDev|LeBinDev)\)\s*:', text, re.MULTILINE):
+            found.setdefault(_DEVICE_BASES[base], []).append((cls, m_map.group(1) if m_map else ''))
+    if not found:
+        raise ValueError(f"No device class derived from ModbusDev or LeBinDev found in {directory}")
+    for proto, classes in found.items():
+        if len(classes) > 1:
+            raise ValueError(f"More {proto} device classes in {directory}: {', '.join(c for c, _ in classes)}, "
+                             f"only one {TEST_FILES[proto]} can be generated")
+    result: Dict[str, str] = {}
+    _write_tests(directory, [(c[0][0], c[0][1], p) for p, c in found.items()], force, result)
+    return result
+
+
+def _write_tests(directory: str, devices: List[Tuple[str, str, str]], force: bool, result: Dict[str, str]) -> None:
+    """
+    Write communication test file of each device
+    :param devices: List of (class name, map file, protocol)
+    """
+    dual = len(devices) == 2
+    for cls_name, map_file, proto in devices:
+        path = os.path.join(directory, TEST_FILES[proto])
+        if os.path.exists(path) and not force:
+            result[path] = 'kept'
+            continue
+        map_path = os.path.join(directory, map_file)
+        regs, test_register = None, None
+        if map_file and os.path.isfile(map_path):
+            regs = _find_regs_class(directory, map_file)
+            if 'SYS_TEST' in _reg_names(_load_reg_map(map_path)[0], proto):
+                test_register = 'SYS_TEST'
+            if regs is not None and 'SYS_TEST' not in _regs_constants(directory, regs[0]):
+                regs = None
+        result[path] = 'overwritten' if os.path.exists(path) else 'created'
+        _write_text(path, _test_source(cls_name, proto, regs, test_register, dual))
+
+
+def _test_source(name: str, protocol: str, regs: Optional[Tuple[str, str]], test_register: Optional[str],
+                 dual: bool = False) -> str:
+    """
+    Source of generated communication test file
+    :param name: Device class name
+    :param protocol: 'modbus' or 'lebin'
+    :param regs: Register name class (module, class) used for the test register, or None
+    :param test_register: Register safe to write by the read-back test (SYS_TEST) or None
+    :param dual: Directory contains both Modbus and LeBin device
+    """
+    modbus = protocol == 'modbus'
+    base = 'ModbusDeviceTests' if modbus else 'LeBinDeviceTests'
+    regs_import = f"from .{regs[0]} import {regs[1]} as Reg\n" if regs and test_register else ""
+    if test_register:
+        test_reg = f"Reg.{test_register}" if regs_import else json.dumps(test_register)
+        test_reg_line = f"    test_register = {test_reg}\n"
+    else:
+        test_reg_line = "    test_register = None  # e.g., Reg.SYS_TEST, must be safe to write\n"
+    open_example = "{'comport': 'COM5', 'slave': 1}" if modbus else "{'comport': 'COM5'}"
+    defaults = "ComSettings*.json, VisualSettings.json" if modbus else \
+        "ComSettings*.json, port found by USB id when usb is declared"
+    unknown = ("    # unknown_address = 65000  # register address not supported by the device\n"
+               "    # wrong_slave = 247  # slave address with no device on the bus\n") if modbus else \
+        "    # unknown_id = 0x7FFFFF02  # register ID not supported by the device\n"
+    upgrade_note = ("    # Both protocol test files reach the same device, enable the upgrade in one of them only\n"
+                    if dual else "")
+    return (f'"""\n'
+            f'Communication tests of {name} ({"Modbus" if modbus else "LeBin"}) on a real device.\n\n'
+            f'Run: python -m pytest <directory> [--junitxml=report.xml]\n'
+            f'Without connected devices deselect them: python -m pytest -m "not hardware"\n'
+            f'Tests are provided by lecore.DeviceTests, set the configuration below.\n'
+            f'"""\n'
+            f'from lecore.DeviceTests import {base}\n\n'
+            f'from .{name} import {name}\n'
+            f'{regs_import}\n\n'
+            f'class Test{name}({base}):\n'
+            f'    device_class = {name}\n'
+            f'    # Arguments of open(), e.g., {open_example}; empty uses defaults ({defaults})\n'
+            f'    open_kwargs = {{}}\n'
+            f'    # Register written with a random value and read back (original value is restored)\n'
+            f'{test_reg_line}'
+            f'    # Registers not read by the read-all test\n'
+            f'    exclude = []\n'
+            f'    # Firmware binary for the upgrade test (runs last), None skips it\n'
+            f'{upgrade_note}'
+            f'    firmware = None\n'
+            f'    reboot_time = 5\n'
+            f'{unknown}\n'
+            f'    # Exact device definition instead of device_class and open_kwargs: return an opened device,\n'
+            f'    # apply port settings through open() so that the reopen test reuses them\n'
+            f'    # @classmethod\n'
+            f'    # def create_device(cls):\n'
+            f'    #     dev = {name}()\n'
+            f'    #     dev.open(comport=\'COM5\')\n'
+            f'    #     return dev\n')
 
 
 def _device_source(name: str, protocol: str, map_file: str, com_file: str, regs: Optional[Tuple[str, str]],
@@ -471,6 +591,7 @@ def _claude_source(devices: List[Tuple[str, str, str, str]], package: str,
                        f"    value = dev.read({reg})  # None on communication error\n"
                        f"    dev.write({reg}, value)  # True on success, None on error, "
                        f"list writes consecutive registers\n")
+    test_files = " and ".join(f"`{TEST_FILES[d[2]]}` (`{d[0]}`)" for d in devices)
     imports = ", ".join([d[0] for d in devices] + (['Reg'] if regs else []))
     opts = f"[--comport COM5]{' [--slave 3]' if devices[0][2] == 'modbus' else ''}"
     cli = (f"python -m {package} --list                    # register names\n"
@@ -494,7 +615,17 @@ def _claude_source(devices: List[Tuple[str, str, str, str]], package: str,
             f"- `write()` validates values against the register map: read-only registers and out-of-range values "
             f"raise `ValueError`, unknown names `RegisterNotFoundError` (`KeyError`).\n"
             f"- `dev.upgrade_firmware(file)` returns True when upgraded and firmware version verified.\n"
-            f"- Full lecore guide: `python -m lecore guide`.\n")
+            f"- Full lecore guide: `python -m lecore guide`.\n\n"
+            f"## Tests\n\n"
+            f"Communication tests on the real device are in {test_files}, provided by `lecore.DeviceTests`. "
+            f"Configure them by class attributes: `open_kwargs` (port), `test_register` (register safe to write), "
+            f"`exclude`, `firmware` (upgrade test, None skips it); override `create_device()` for an exact device "
+            f"definition. Do not copy or rewrite the tests, missing test files are created by "
+            f"`python -m lecore new-tests`.\n\n"
+            f"```\n"
+            f"python -m pytest . --junitxml=report.xml   # needs the device connected\n"
+            f"python -m pytest -m \"not hardware\"        # deselect device tests without hardware\n"
+            f"```\n")
 
 
 def _indent(code: str, spaces: int) -> str:
