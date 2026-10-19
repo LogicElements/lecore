@@ -109,7 +109,13 @@ class TestMyDevice(ModbusDeviceTests):
     reboot_time = 5
     # unknown_address = 65000 / wrong_slave = 247 (Modbus), unknown_id = 0x7FFFFF02 (LeBin)
     # override classmethod create_device() returning an opened device for an exact device definition
+    hil_signal = None               # HIL station: DUT signal name in hil/dut.yaml, HIL then opens the device
 ```
+
+On a HIL station (`hil-platform`, pytest with `--hil-station`) set `hil_signal` to the DUT signal name (`lebin` or
+`modbus_dev` signal in `hil/dut.yaml`): HIL opens the device by its port, lock and overrides, records artifacts and
+skips the class when the terminal is not wired; optional `hil_supply` (power signal on for the class) and
+`hil_boot_s`. Without `--hil-station` the device is opened by `create_device()`.
 
 Tests (real device, opened once per class): read, write with read-back (original value restored), read of all
 registers (failures listed at once), register present in the map but unknown to the device (read returns `None`,

@@ -521,7 +521,11 @@ def _test_source(name: str, protocol: str, regs: Optional[Tuple[str, str]], test
             f'{upgrade_note}'
             f'    firmware = None\n'
             f'    reboot_time = 5\n'
-            f'{unknown}\n'
+            f'{unknown}'
+            f'    # HIL platform: DUT signal name in hil/dut.yaml, e.g., {json.dumps(protocol)}; with --hil-station HIL\n'
+            f'    # opens the device (port and lock of the station), skips the class when the terminal is not wired\n'
+            f'    hil_signal = None\n'
+            f'    # hil_supply = "supply"  # power signal switched on for the class, hil_boot_s = 1  # boot time\n\n'
             f'    # Exact device definition instead of device_class and open_kwargs: return an opened device,\n'
             f'    # apply port settings through open() so that the reopen test reuses them\n'
             f'    # @classmethod\n'
@@ -620,7 +624,8 @@ def _claude_source(devices: List[Tuple[str, str, str, str]], package: str,
             f"Communication tests on the real device are in {test_files}, provided by `lecore.DeviceTests`. "
             f"Configure them by class attributes: `open_kwargs` (port), `test_register` (register safe to write), "
             f"`exclude`, `firmware` (upgrade test, None skips it); override `create_device()` for an exact device "
-            f"definition. Do not copy or rewrite the tests, missing test files are created by "
+            f"definition. On a HIL station (hil-platform, `--hil-station`) set `hil_signal` to the DUT signal name, "
+            f"HIL then opens the device. Do not copy or rewrite the tests, missing test files are created by "
             f"`python -m lecore new-tests`.\n\n"
             f"```\n"
             f"python -m pytest . --junitxml=report.xml   # needs the device connected\n"

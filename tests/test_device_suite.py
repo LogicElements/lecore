@@ -12,13 +12,13 @@ try:
     import lecore.Devices.Rftb as RFTB
     from lecore.Devices.Validation import check_reg_value
     from lecore.DeviceTests import ModbusDeviceTests, LeBinDeviceTests
-    from lecore.DeviceTests.Base import random_value, pick_rejected_writes
+    from lecore.DeviceTests.Base import random_value, pick_rejected_writes, _device, HIL_FIXTURE
 except ImportError:
     import src.lecore.Devices.PhaseDet as PE
     import src.lecore.Devices.Rftb as RFTB
     from src.lecore.Devices.Validation import check_reg_value
     from src.lecore.DeviceTests import ModbusDeviceTests, LeBinDeviceTests
-    from src.lecore.DeviceTests.Base import random_value, pick_rejected_writes
+    from src.lecore.DeviceTests.Base import random_value, pick_rejected_writes, _device, HIL_FIXTURE
 
 from .fake_devices import FakeMbClient, FakeLeBinCom
 
@@ -193,6 +193,69 @@ def test_open_failure_fails():
     with pytest.raises(pytest.fail.Exception, match='COM_NOT_EXISTING_XYZ'):
         NotOpening.create_device()
 
+
+
+class _Request:
+    """
+    Minimal pytest request for the device fixture, fixtures by name or missing (LookupError)
+    """
+    def __init__(self, cls, fixtures):
+        self.cls, self.fixtures, self.requested = cls, fixtures, []
+
+    def getfixturevalue(self, name):
+        self.requested.append(name)
+        if name not in self.fixtures:
+            raise LookupError(name)
+        return self.fixtures[name]
+
+
+class _Dev:
+    closed = False
+
+    def close(self):
+        self.closed = True
+
+
+def _suite(hil_signal):
+    class Suite(ModbusDeviceTests):
+        created = []
+
+        @classmethod
+        def create_device(cls):
+            dev = _Dev()
+            cls.created.append(dev)
+            return dev
+    Suite.hil_signal = hil_signal
+    return Suite
+
+
+def _run_device_fixture(request):
+    gen = _device(request)
+    dev = next(gen)
+    with pytest.raises(StopIteration):
+        next(gen)
+    return dev
+
+
+def test_device_from_hil_is_not_closed():
+    hil_dev = _Dev()
+    suite = _suite('modbus')
+    assert _run_device_fixture(_Request(suite, {HIL_FIXTURE: hil_dev})) is hil_dev
+    assert not hil_dev.closed and not suite.created
+
+
+def test_device_without_hil_station_or_plugin_by_create_device():
+    for fixtures in ({HIL_FIXTURE: None}, {}):
+        suite = _suite('modbus')
+        dev = _run_device_fixture(_Request(suite, fixtures))
+        assert suite.created == [dev] and dev.closed
+
+
+def test_device_without_hil_signal_does_not_ask_hil():
+    suite = _suite(None)
+    request = _Request(suite, {HIL_FIXTURE: _Dev()})
+    assert _run_device_fixture(request) is suite.created[0]
+    assert request.requested == []
 
 
 def _fake_lebin(**kwargs):

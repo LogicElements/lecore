@@ -53,9 +53,21 @@ The tests themselves are in `lecore.DeviceTests` (`ModbusDeviceTests`, `LeBinDev
 | `reboot_time` | `5` | Wait after upgrade in seconds |
 | `unknown_address` / `wrong_slave` | `65000` / `247` | Modbus: address and slave address not answered by the device |
 | `unknown_id` | `0x7FFFFF02` | LeBin: register ID not supported by the device |
+| `hil_signal` | `None` | DUT signal name in `hil/dut.yaml` when run on a HIL station, see below |
+| `hil_supply` | `None` | HIL: power signal switched on for the whole test class |
+| `hil_boot_s` | `0` | HIL: wait after switching `hil_supply` on in seconds |
 
 For an exact device definition override classmethod `create_device()` returning an opened device; apply port
 settings through `open()`, the reopen test calls `close()` and `open()` without arguments.
+
+### On a HIL station
+
+With `hil_signal` set and pytest run with `--hil-station` (package `hil-platform`), the device comes from the HIL
+fixture `hil_lecore_device` instead of `create_device()`: HIL opens it with the port and overrides of the DUT signal
+(`lebin` or `modbus_dev` in `hil/dut.yaml`), holds the station lock, writes the artifacts of the class into
+`hil/out/` and skips the whole class when the terminal of the signal is not wired. The safe state comes after the
+class, not after each test. Without `--hil-station` (or without `hil-platform`) the device is opened by
+`create_device()` as before, `lecore` itself does not import `hil`.
 
 Tests in order (the device is opened once per test class): read, write with read-back of `test_register` (original
 value restored), read of all registers (all failures listed at once), register present in the map but unknown to

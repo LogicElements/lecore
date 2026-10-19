@@ -80,10 +80,22 @@ def pick_rejected_writes(regs: Dict[str, dict], is_read_only: Callable[[dict], b
     return read_only, limited
 
 
+#: Fixture of a test environment (HIL platform) providing an opened device for classes with hil_signal
+HIL_FIXTURE = 'hil_lecore_device'
+
+
 def _device(request):
     """
-    Device opened once per test class by its create_device()
+    Device opened once per test class, by the test environment (hil_signal) or by create_device()
     """
+    if getattr(request.cls, 'hil_signal', None):
+        try:
+            dev = request.getfixturevalue(HIL_FIXTURE)
+        except LookupError:  # pytest.FixtureLookupError, the HIL platform is not installed
+            dev = None
+        if dev is not None:  # None: no HIL station selected, the device is opened here
+            yield dev  # the environment owns the device and closes it
+            return
     dev = request.cls.create_device()
     yield dev
     dev.close()
@@ -107,6 +119,12 @@ class DeviceTestsBase:
     firmware = None
     #: Time the device takes to reboot after upgrade in seconds
     reboot_time: float = 5
+    #: DUT signal name (hil/dut.yaml) of the device when run on a HIL station, None opens it by create_device()
+    hil_signal: Optional[str] = None
+    #: DUT power signal switched on by HIL for the whole test class, None leaves the power as it is
+    hil_supply: Optional[str] = None
+    #: Time in seconds HIL waits after switching hil_supply on before opening the device
+    hil_boot_s: float = 0
 
     #: Name of the attribute configuring the unknown register, used in failure hints
     _unknown_hint = ''

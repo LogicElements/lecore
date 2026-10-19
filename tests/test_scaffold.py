@@ -198,6 +198,9 @@ class TestScaffold(unittest.TestCase):
         result = lecore.generate_tests(self.dir)
         self.assertEqual(sorted(os.path.basename(p) for p in result), ['test_lebin.py', 'test_modbus.py'])
         self.assertEqual(self._import('test_lebin').TestDualLeBin.device_class.__name__, 'DualLeBin')
+        # Standalone by default, the HIL signal is set by user
+        self.assertIsNone(self._import('test_lebin').TestDualLeBin.hil_signal)
+        self.assertIn('    hil_signal = None\n', open(os.path.join(self.dir, 'test_modbus.py'), encoding='utf-8').read())
         # Second Modbus class in the directory is ambiguous
         shutil.copy(os.path.join(self.dir, 'Dual.py'), os.path.join(self.dir, 'Dual2.py'))
         with open(os.path.join(self.dir, 'Dual2.py'), 'r+', encoding='utf-8') as f:
