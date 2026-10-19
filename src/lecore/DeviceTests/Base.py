@@ -80,6 +80,15 @@ def pick_rejected_writes(regs: Dict[str, dict], is_read_only: Callable[[dict], b
     return read_only, limited
 
 
+def _device(request):
+    """
+    Device opened once per test class by its create_device()
+    """
+    dev = request.cls.create_device()
+    yield dev
+    dev.close()
+
+
 class DeviceTestsBase:
     """
     Communication tests of a real device, subclass it (class name starting with Test) and set class attributes
@@ -117,12 +126,9 @@ class DeviceTestsBase:
                         f" ({_port_name(dev)})")
         return dev
 
-    @pytest.fixture(scope="class")
-    @classmethod
-    def device(cls):
-        dev = cls.create_device()
-        yield dev
-        dev.close()
+    # Static fixture taking the test class from request: an instance method class fixture is deprecated
+    # in pytest 9 and a classmethod fixture fails on Python 3.9 (classmethod has no __name__)
+    device = staticmethod(pytest.fixture(scope="class", name="device")(_device))
 
     # Protocol hooks
 
