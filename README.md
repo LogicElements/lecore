@@ -47,6 +47,7 @@ New device class (in the directory with the register map): `python -m lecore new
 - [Device API](doc/api.md) - Modbus and LeBin device: read, write, firmware upgrade
 - [User interfaces](doc/user-interfaces.md) - graphical and terminal register browser
 - [Devices](doc/devices.md) - RTD Emulator, VMS-1502 RTD Meter, Phase Detector, FG-320
+- [Firmware post-build](doc/fwbuild.md) - FW information block and CRC (replaces BinBuild.exe)
 - [Build and release](doc/build.md)
 - [Looger](doc/looger.md)
 

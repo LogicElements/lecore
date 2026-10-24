@@ -6,6 +6,7 @@ import sys
 import warnings
 
 from .Scaffold import guide, new_device, generate_regs, generate_tests
+from .FwBuild import TARGETS, build_file
 
 
 def _show_warning(message, category, filename, lineno, file=None, line=None):
@@ -48,6 +49,16 @@ def main(argv=None) -> int:
     p.add_argument("--class", dest="class_name", default="Regs", help="generated class name")
     p.add_argument("-o", "--output", help="output Python file (default: print)")
 
+    p = sub.add_parser("binbuild", help="stamp the FW information block (CRC, version, size) into a binary "
+                                        "(replaces BinBuild.exe)",
+                       formatter_class=argparse.RawDescriptionHelpFormatter,
+                       epilog="targets:\n" + "\n".join(f"  {n} - {t.description}" for n, t in TARGETS.items()))
+    p.add_argument("target", type=int, choices=sorted(TARGETS), help="FW information block layout")
+    p.add_argument("file", help="binary file")
+    p.add_argument("version", help="FW version, hexadecimal (BCD)")
+    p.add_argument("--suffix", default="", help="suffix of the output name, device ID for target 4")
+    p.add_argument("--out-dir", help="output directory (default: directory of the binary)")
+
     args = parser.parse_args(argv)
     try:
         if args.cmd == "guide":
@@ -65,6 +76,9 @@ def main(argv=None) -> int:
             src = generate_regs(args.reg_map, args.class_name, args.output)
             if args.output is None:
                 print(src, end="")
+        elif args.cmd == "binbuild":
+            out, crc = build_file(args.target, args.file, args.version, args.suffix, args.out_dir)
+            print(f"{out}\nNew File created with CRC value {crc:08X}")
     except (ValueError, OSError) as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
