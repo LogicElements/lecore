@@ -97,5 +97,47 @@ class TestBuild(unittest.TestCase):
             self.assertEqual(out, out_dir / "fw-dev-20261024-2A.bin")
 
 
+class TestHex(unittest.TestCase):
+    def test_roundtrip_with_extended_address(self):
+        # Image crossing a 64 KiB boundary needs two extended linear address records
+        image = random.Random(3).randbytes(100)
+        text = FwBuild.write_hex(0x0800FFD0, image, ":0400000508000131BD")
+        self.assertEqual(text.count(":02000004"), 2)
+        self.assertEqual(FwBuild.read_hex(text), (0x0800FFD0, image, ":0400000508000131BD"))
+
+    def test_gap_filled_with_zeros(self):
+        text = ":020000040800F2\n:0400000001020304F2\n:02000800AABB91\n:00000001FF\n"
+        self.assertEqual(FwBuild.read_hex(text), (0x08000000, b"\x01\x02\x03\x04" + bytes(4) + b"\xaa\xbb", None))
+
+    def test_invalid_records(self):
+        for text in (":0400000001020304F3\n", "0400000001020304F2\n", ":04000000010203F2\n", ":00000001FF\n"):
+            with self.assertRaises(ValueError):
+                FwBuild.read_hex(text)
+
+    def test_huge_gap(self):
+        fw = FwBuild.write_hex(0x08000000, bytes(4)).replace(":00000001FF\n", "")
+        text = fw + FwBuild.write_hex(0x1FFF7800, bytes(4))
+        with self.assertRaises(ValueError):
+            FwBuild.read_hex(text)
+
+    def test_build_file_same_as_bin(self):
+        data = blank_binary(1024)
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "fw.hex"
+            src.write_text(FwBuild.write_hex(0x08000000, data, ":0400000508000131BD"))
+            out, crc = FwBuild.build_file(5, src, "2", date=DATE)
+            self.assertEqual(out, Path(tmp) / "fw-20261024-2.hex")
+            expected, expected_crc = FwBuild.build(data, 5, "2", date=DATE)
+            self.assertEqual(crc, expected_crc)
+            self.assertEqual(FwBuild.read_hex(out.read_text()), (0x08000000, expected, ":0400000508000131BD"))
+
+    def test_target1_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "fw.HEX"
+            src.write_text(FwBuild.write_hex(0x08000000, blank_binary(512)))
+            with self.assertRaises(ValueError):
+                FwBuild.build_file(1, src, "2", date=DATE)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -49,12 +49,12 @@ def main(argv=None) -> int:
     p.add_argument("--class", dest="class_name", default="Regs", help="generated class name")
     p.add_argument("-o", "--output", help="output Python file (default: print)")
 
-    p = sub.add_parser("binbuild", help="stamp the FW information block (CRC, version, size) into a binary "
+    p = sub.add_parser("binbuild", help="stamp the FW information block (CRC, version, size) into a binary or HEX "
                                         "(replaces BinBuild.exe)",
                        formatter_class=argparse.RawDescriptionHelpFormatter,
                        epilog="targets:\n" + "\n".join(f"  {n} - {t.description}" for n, t in TARGETS.items()))
     p.add_argument("target", type=int, choices=sorted(TARGETS), help="FW information block layout")
-    p.add_argument("file", help="binary file")
+    p.add_argument("file", help="binary or Intel HEX (.hex) file")
     p.add_argument("version", help="FW version, hexadecimal (BCD)")
     p.add_argument("--suffix", default="", help="suffix of the output name, device ID for target 4")
     p.add_argument("--out-dir", help="output directory (default: directory of the binary)")
